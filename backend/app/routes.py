@@ -120,12 +120,15 @@ async def get_courses(user_id: str):
 
 @router.get("/courses/{course_id}")
 async def get_course_details(course_id: str):
-    """Get details for a specific course."""
+    """Get details for a specific course, including syllabi with download URLs."""
     try:
         course = get_course(course_id)
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
         syllabi = get_course_syllabi(course_id)
+        # Attach download URLs for each syllabus
+        for syllabus in syllabi:
+            syllabus["download_url"] = get_syllabus_pdf_url(syllabus["file_path"])
         return {"success": True, "course": course, "syllabi": syllabi}
     except HTTPException:
         raise

@@ -202,6 +202,7 @@ export function IndexPage() {
                   setSelectedCourseName((course as any).name ?? "");
                   setUploadModalOpen(true);
                 }}
+                onClick={() => navigate(`/courses/${course.id}`)}
               />
             ))}
           </div>

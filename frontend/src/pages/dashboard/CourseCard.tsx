@@ -17,6 +17,7 @@ interface CourseCardProps {
   typeIcon: Record<string, string>;
   onDelete: () => void;
   onUpload?: () => void;
+  onClick?: () => void;
 }
 
 export function CourseCard({
@@ -28,6 +29,7 @@ export function CourseCard({
   typeIcon,
   onDelete,
   onUpload,
+  onClick,
 }: CourseCardProps) {
   const avg = getCourseAvg(course.id, categories, grades);
   const courseEvents = events.filter((e) => e.course_id === course.id);
@@ -36,7 +38,10 @@ export function CourseCard({
   );
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card
+      className="relative overflow-hidden cursor-pointer transition hover:shadow-md"
+      onClick={onClick}
+    >
       <div className="h-1.5" style={{ backgroundColor: course.color }} />
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
@@ -52,7 +57,10 @@ export function CourseCard({
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 text-muted-foreground"
-                onClick={onUpload}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onUpload();
+                }}
                 title="Upload syllabus"
               >
                 <Upload className="h-4 w-4" />
@@ -62,7 +70,10 @@ export function CourseCard({
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-destructive"
-              onClick={onDelete}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
             >
               <Trash2 className="h-4 w-4" />
             </Button>

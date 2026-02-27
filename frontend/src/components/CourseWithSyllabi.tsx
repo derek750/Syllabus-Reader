@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Download, Trash2, Upload, FileText } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
+import { Input } from "@/components/Input";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -56,6 +57,12 @@ export function CourseWithSyllabi({
   const [assignmentsLoaded, setAssignmentsLoaded] = useState(false);
   const [assignmentsLoading, setAssignmentsLoading] = useState(false);
   const [assignmentsError, setAssignmentsError] = useState("");
+  const [newAssignmentName, setNewAssignmentName] = useState("");
+  const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
+  const [newAssignmentWorth, setNewAssignmentWorth] = useState<string>("");
+  const [newAssignmentExtraInfo, setNewAssignmentExtraInfo] = useState("");
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [saveAssignmentError, setSaveAssignmentError] = useState("");
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
@@ -102,6 +109,68 @@ export function CourseWithSyllabi({
 
     if (nextVisible && !assignmentsLoaded) {
       await loadAssignments();
+    }
+  };
+
+  const handleAddAssignment = async () => {
+    if (!courseId) return;
+    setSaveAssignmentError("");
+    if (!newAssignmentName.trim() || !newAssignmentDueDate || !newAssignmentWorth) {
+      setSaveAssignmentError("Name, due date, and worth are required.");
+      return;
+    }
+    const worthNumber = Number(newAssignmentWorth);
+    if (Number.isNaN(worthNumber) || worthNumber <= 0) {
+      setSaveAssignmentError("Worth must be a positive number.");
+      return;
+    }
+
+    setSavingAssignment(true);
+    try {
+      const response = await fetch(`${API_BASE}/courses/${courseId}/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newAssignmentName.trim(),
+          due_date: newAssignmentDueDate,
+          worth: worthNumber,
+          extra_info: newAssignmentExtraInfo.trim() || null,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to create assignment");
+      }
+      const data = await response.json();
+      setAssignments((prev) => [...prev, data.assignment]);
+      setAssignmentsLoaded(true);
+      setAssignmentsVisible(true);
+      setNewAssignmentName("");
+      setNewAssignmentDueDate("");
+      setNewAssignmentWorth("");
+      setNewAssignmentExtraInfo("");
+    } catch (error) {
+      setSaveAssignmentError(
+        error instanceof Error ? error.message : "Failed to create assignment"
+      );
+    } finally {
+      setSavingAssignment(false);
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    if (!confirm("Are you sure you want to delete this assignment?")) return;
+    try {
+      const response = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete assignment");
+      }
+      setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+    } catch (error) {
+      setAssignmentsError(
+        error instanceof Error ? error.message : "Failed to delete assignment"
+      );
     }
   };
 
@@ -215,7 +284,56 @@ export function CourseWithSyllabi({
           </div>
 
           {assignmentsVisible && (
-            <div>
+            <div className="space-y-3">
+              <div className="space-y-2 rounded-lg border border-dashed p-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Add a new assignment
+                </p>
+                <div className="grid gap-2 md:grid-cols-[2fr,1.2fr,0.8fr]">
+                  <Input
+                    placeholder="Assignment name"
+                    value={newAssignmentName}
+                    onChange={(e) => setNewAssignmentName(e.target.value)}
+                    disabled={savingAssignment}
+                  />
+                  <Input
+                    type="date"
+                    value={newAssignmentDueDate}
+                    onChange={(e) => setNewAssignmentDueDate(e.target.value)}
+                    disabled={savingAssignment}
+                  />
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    placeholder="Worth %"
+                    value={newAssignmentWorth}
+                    onChange={(e) => setNewAssignmentWorth(e.target.value)}
+                    disabled={savingAssignment}
+                  />
+                </div>
+                <Input
+                  placeholder="Extra info (optional)"
+                  value={newAssignmentExtraInfo}
+                  onChange={(e) => setNewAssignmentExtraInfo(e.target.value)}
+                  disabled={savingAssignment}
+                />
+                <div className="flex items-center justify-between">
+                  <Button
+                    size="sm"
+                    onClick={handleAddAssignment}
+                    disabled={savingAssignment}
+                  >
+                    {savingAssignment ? "Saving..." : "Add assignment"}
+                  </Button>
+                  {saveAssignmentError && (
+                    <span className="text-xs text-red-600">
+                      {saveAssignmentError}
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {assignmentsLoading ? (
                 <div className="text-sm text-muted-foreground rounded-lg border border-dashed p-4 text-center">
                   Loading assignments...
@@ -248,6 +366,14 @@ export function CourseWithSyllabi({
                             : ""}
                         </p>
                       </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteAssignment(assignment.id)}
+                        title="Delete assignment"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                      </Button>
                     </div>
                   ))}
                 </div>
