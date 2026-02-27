@@ -29,14 +29,14 @@ def _ensure_storage_client():
 def upload_syllabus_pdf(course_id: str, file_content: bytes, file_name: str) -> dict:
     """
     Upload a PDF syllabus to Supabase Storage.
-    Returns file path and page count.
+    Returns file path, page count, and file size.
     """
     _ensure_storage_client()
-    
+
     # Validate it's a PDF
-    if not file_name.lower().endswith('.pdf'):
+    if not file_name.lower().endswith(".pdf"):
         raise ValueError("File must be a PDF")
-    
+
     # Get page count
     try:
         pdf_stream = io.BytesIO(file_content)
@@ -44,29 +44,29 @@ def upload_syllabus_pdf(course_id: str, file_content: bytes, file_name: str) -> 
         page_count = len(pdf_reader.pages)
     except Exception as e:
         raise ValueError(f"Invalid PDF file: {e}")
-    
+
     # Create a file path: syllabi/{course_id}/{filename}
     file_path = f"syllabi/{course_id}/{file_name}"
-    
+
+    # Upload to Supabase Storage
     try:
-        # Upload to Supabase Storage
-        response = _client.storage.from_("syllabus-storage").upload(
+        _client.storage.from_("syllabus-storage").upload(
             file_path,
             file_content,
-            {"content-type": "application/pdf"}
+            {"content-type": "application/pdf"},
         )
-        
+
         return {
             "file_path": file_path,
             "page_count": page_count,
-            "file_size_bytes": len(file_content)
+            "file_size_bytes": len(file_content),
         }
     except Exception as e:
         raise RuntimeError(f"Failed to upload PDF: {e}")
 
 
 def get_syllabus_pdf_url(file_path: str) -> str:
-    """Get the public URL for a syllabus PDF."""
+    """Get the public URL for a syllabus PDF from Supabase."""
     _ensure_storage_client()
     try:
         url = _client.storage.from_("syllabus-storage").get_public_url(file_path)

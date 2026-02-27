@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File
+import os
 
 from .auth.google_auth import verify_google_id_token, get_or_create_user_by_email
 from .db import supabase_client
@@ -10,8 +11,6 @@ from .db.pdf_storage import upload_syllabus_pdf, get_syllabus_pdf_url, delete_sy
 from .datastructure import (
     IDTokenRequest, InsertRequest, CreateCourseRequest, UpdateCourseRequest
 )
-import os
-
 router = APIRouter(prefix="/api")
 
 
