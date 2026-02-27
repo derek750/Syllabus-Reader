@@ -4,6 +4,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { IndexPage } from "@/pages/IndexPage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { GradesPage } from "@/pages/GradesPage";
+import { CoursesPage } from "@/pages/CoursesPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import SignInPage from "@/pages/SignInPage";
 import type { ReactElement } from "react";
@@ -24,6 +25,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/" element={<Protected><AppLayout><IndexPage /></AppLayout></Protected>} />
+      <Route path="/courses" element={<Protected><AppLayout><CoursesPage /></AppLayout></Protected>} />
       <Route path="/calendar" element={<Protected><AppLayout><CalendarPage /></AppLayout></Protected>} />
       <Route path="/grades" element={<Protected><AppLayout><GradesPage /></AppLayout></Protected>} />
       <Route path="/auth" element={<Navigate to="/" replace />} />

@@ -1,30 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Course, Event, GradeCategory, Grade } from "./types";
 
-const STORAGE_KEYS = {
-  courses: "syllabus-reader-courses",
-  events: "syllabus-reader-events",
-  categories: "syllabus-reader-grade-categories",
-  grades: "syllabus-reader-grades",
-} as const;
-
-function loadJson<T>(key: string, defaultVal: T): T {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw) return JSON.parse(raw) as T;
-  } catch {
-    // ignore
-  }
-  return defaultVal;
-}
-
-function saveJson(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // ignore
-  }
-}
+const LEGACY_STORAGE_KEYS = [
+  "syllabus-reader-courses",
+  "syllabus-reader-events",
+  "syllabus-reader-grade-categories",
+  "syllabus-reader-grades",
+] as const;
 
 function uuid() {
   return crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -39,7 +21,9 @@ interface AppState {
 
 interface StoreActions {
   addCourse: (name: string, semester: string | null) => void;
+  setCourses: (courses: Course[]) => void;
   deleteCourse: (id: string) => void;
+  reset: () => void;
   addEvent: (event: Omit<Event, "id" | "created_at">) => void;
   deleteEvent: (id: string) => void;
   addCategory: (courseId: string, name: string, weight: number) => void;
@@ -56,25 +40,19 @@ const COURSE_COLORS = [
 const StoreContext = createContext<(AppState & StoreActions) | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [courses, setCourses] = useState<Course[]>(() => loadJson(STORAGE_KEYS.courses, []));
-  const [events, setEvents] = useState<Event[]>(() => loadJson(STORAGE_KEYS.events, []));
-  const [categories, setCategories] = useState<GradeCategory[]>(() =>
-    loadJson(STORAGE_KEYS.categories, [])
-  );
-  const [grades, setGrades] = useState<Grade[]>(() => loadJson(STORAGE_KEYS.grades, []));
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [categories, setCategories] = useState<GradeCategory[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
 
   useEffect(() => {
-    saveJson(STORAGE_KEYS.courses, courses);
-  }, [courses]);
-  useEffect(() => {
-    saveJson(STORAGE_KEYS.events, events);
-  }, [events]);
-  useEffect(() => {
-    saveJson(STORAGE_KEYS.categories, categories);
-  }, [categories]);
-  useEffect(() => {
-    saveJson(STORAGE_KEYS.grades, grades);
-  }, [grades]);
+    // Ensure we don't persist app state in localStorage (only user info is allowed).
+    try {
+      for (const key of LEGACY_STORAGE_KEYS) localStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const addCourse = useCallback((name: string, semester: string | null) => {
     const now = new Date().toISOString();
@@ -93,6 +71,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, [courses.length]);
 
+  const setCoursesFromServer = useCallback((newCourses: Course[]) => {
+    setCourses(newCourses);
+  }, []);
+
   const deleteCourse = useCallback((id: string) => {
     const categoryIdsToRemove = categories.filter((c) => c.course_id === id).map((c) => c.id);
     setCourses((prev) => prev.filter((c) => c.id !== id));
@@ -100,6 +82,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setCategories((prev) => prev.filter((c) => c.course_id !== id));
     setGrades((prev) => prev.filter((g) => !categoryIdsToRemove.includes(g.category_id)));
   }, [categories]);
+
+  const reset = useCallback(() => {
+    setCourses([]);
+    setEvents([]);
+    setCategories([]);
+    setGrades([]);
+  }, []);
 
   const addEvent = useCallback((event: Omit<Event, "id" | "created_at">) => {
     setEvents((prev) => [
@@ -163,7 +152,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     categories,
     grades,
     addCourse,
+    setCourses: setCoursesFromServer,
     deleteCourse,
+    reset,
     addEvent,
     deleteEvent,
     addCategory,

@@ -1,5 +1,5 @@
 import { format, isPast, isToday } from "date-fns";
-import { Trash2 } from "lucide-react";
+import { Trash2, Upload } from "lucide-react";
 import type { Course, Event, GradeCategory, Grade } from "@/types";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
@@ -16,6 +16,7 @@ interface CourseCardProps {
   ) => number | null;
   typeIcon: Record<string, string>;
   onDelete: () => void;
+  onUpload?: () => void;
 }
 
 export function CourseCard({
@@ -26,6 +27,7 @@ export function CourseCard({
   getCourseAvg,
   typeIcon,
   onDelete,
+  onUpload,
 }: CourseCardProps) {
   const avg = getCourseAvg(course.id, categories, grades);
   const courseEvents = events.filter((e) => e.course_id === course.id);
@@ -44,14 +46,27 @@ export function CourseCard({
               <p className="text-sm text-muted-foreground">{course.semester}</p>
             )}
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {onUpload && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                onClick={onUpload}
+                title="Upload syllabus"
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
