@@ -4,12 +4,32 @@ import os
 from .auth.google_auth import verify_google_id_token, get_or_create_user_by_email
 from .db import supabase_client
 from .db.courses import (
-    create_course, get_user_courses, get_course, delete_course, update_course,
-    create_syllabus, get_course_syllabi, get_syllabus, delete_syllabus, update_syllabus
+    create_course,
+    get_user_courses,
+    get_course,
+    delete_course,
+    update_course,
+    create_syllabus,
+    get_course_syllabi,
+    get_syllabus,
+    delete_syllabus,
+    update_syllabus,
+)
+from .db.assignments import (
+    create_assignment,
+    get_course_assignments,
+    get_assignment,
+    update_assignment as update_assignment_row,
+    delete_assignment,
 )
 from .db.pdf_storage import upload_syllabus_pdf, get_syllabus_pdf_url, delete_syllabus_pdf
 from .datastructure import (
-    IDTokenRequest, InsertRequest, CreateCourseRequest, UpdateCourseRequest
+    IDTokenRequest,
+    InsertRequest,
+    CreateCourseRequest,
+    UpdateCourseRequest,
+    CreateAssignmentRequest,
+    UpdateAssignmentRequest,
 )
 router = APIRouter(prefix="/api")
 
@@ -135,6 +155,95 @@ async def delete_course_endpoint(course_id: str):
     try:
         delete_course(course_id)
         return {"success": True, "message": "Course deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# Assignment endpoints
+
+
+@router.get("/courses/{course_id}/assignments")
+async def list_course_assignments(course_id: str):
+    """Get all assignments for a course."""
+    try:
+        course = get_course(course_id)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        assignments = get_course_assignments(course_id)
+        return {"success": True, "assignments": assignments}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/courses/{course_id}/assignments")
+async def create_course_assignment(course_id: str, request: CreateAssignmentRequest):
+    """Create a new assignment for a course."""
+    try:
+        course = get_course(course_id)
+        if not course:
+            raise HTTPException(status_code=404, detail="Course not found")
+
+        assignment = create_assignment(
+            course_id=course_id,
+            name=request.name,
+            due_date=request.due_date,
+            worth=request.worth,
+            extra_info=request.extra_info,
+        )
+        return {"success": True, "assignment": assignment}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/assignments/{assignment_id}")
+async def get_assignment_details(assignment_id: str):
+    """Get details for a specific assignment."""
+    try:
+        assignment = get_assignment(assignment_id)
+        if not assignment:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+        return {"success": True, "assignment": assignment}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/assignments/{assignment_id}")
+async def update_assignment_details(
+    assignment_id: str, request: UpdateAssignmentRequest
+):
+    """Update assignment details."""
+    try:
+        data = {k: v for k, v in request.dict().items() if v is not None}
+        if not data:
+            raise HTTPException(status_code=400, detail="No fields to update")
+
+        assignment = update_assignment_row(assignment_id, data)
+        return {"success": True, "assignment": assignment}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/assignments/{assignment_id}")
+async def delete_assignment_endpoint(assignment_id: str):
+    """Delete an assignment."""
+    try:
+        assignment = get_assignment(assignment_id)
+        if not assignment:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+
+        delete_assignment(assignment_id)
+        return {"success": True, "message": "Assignment deleted"}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

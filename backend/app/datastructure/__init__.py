@@ -3,6 +3,8 @@ from .models import (
     InsertRequest,
     CreateCourseRequest,
     UpdateCourseRequest,
+    CreateAssignmentRequest,
+    UpdateAssignmentRequest,
 )
 
 __all__ = [
@@ -10,4 +12,6 @@ __all__ = [
     "InsertRequest",
     "CreateCourseRequest",
     "UpdateCourseRequest",
+    "CreateAssignmentRequest",
+    "UpdateAssignmentRequest",
 ]

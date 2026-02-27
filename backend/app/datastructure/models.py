@@ -25,9 +25,25 @@ class UpdateCourseRequest(BaseModel):
     instructor: Optional[str] = None
 
 
+class CreateAssignmentRequest(BaseModel):
+    name: str
+    due_date: str
+    worth: float
+    extra_info: Optional[str] = None
+
+
+class UpdateAssignmentRequest(BaseModel):
+    name: Optional[str] = None
+    due_date: Optional[str] = None
+    worth: Optional[float] = None
+    extra_info: Optional[str] = None
+
+
 __all__ = [
     "IDTokenRequest",
     "InsertRequest",
     "CreateCourseRequest",
     "UpdateCourseRequest",
+    "CreateAssignmentRequest",
+    "UpdateAssignmentRequest",
 ]
