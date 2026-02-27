@@ -5,13 +5,27 @@ import { IndexPage } from "@/pages/IndexPage";
 import { CalendarPage } from "@/pages/CalendarPage";
 import { GradesPage } from "@/pages/GradesPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import SignInPage from "@/pages/SignInPage";
+import type { ReactElement } from "react";
+
+
+function Protected({ children }: { children: ReactElement }) {
+  try {
+    const u = localStorage.getItem("user");
+    if (!u) return <Navigate to="/signin" replace />;
+  } catch {
+    return <Navigate to="/signin" replace />;
+  }
+  return children;
+}
 
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<AppLayout><IndexPage /></AppLayout>} />
-      <Route path="/calendar" element={<AppLayout><CalendarPage /></AppLayout>} />
-      <Route path="/grades" element={<AppLayout><GradesPage /></AppLayout>} />
+      <Route path="/signin" element={<SignInPage />} />
+      <Route path="/" element={<Protected><AppLayout><IndexPage /></AppLayout></Protected>} />
+      <Route path="/calendar" element={<Protected><AppLayout><CalendarPage /></AppLayout></Protected>} />
+      <Route path="/grades" element={<Protected><AppLayout><GradesPage /></AppLayout></Protected>} />
       <Route path="/auth" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

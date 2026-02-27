@@ -9,6 +9,14 @@ export default defineConfig({
     hmr: {
       overlay: false,
     },
+    // Proxy API requests to the backend during local development
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   plugins: [react()],
   resolve: {

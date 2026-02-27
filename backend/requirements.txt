@@ -1,3 +1,10 @@
 fastapi
 uvicorn[standard]
 python-dotenv
+
+# Supabase client
+supabase
+
+# Google ID token verification
+google-auth
+requests
