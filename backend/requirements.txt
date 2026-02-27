@@ -8,3 +8,9 @@ supabase
 # Google ID token verification
 google-auth
 requests
+
+# PDF handling
+PyPDF2
+
+# File uploads
+python-multipart

@@ -19,5 +19,3 @@ htmlcov/
 # IDE
 .vscode/
 .idea/
-
-sqldb
