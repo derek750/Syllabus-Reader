@@ -182,7 +182,21 @@ export function IndexPage() {
                 grades={grades}
                 getCourseAvg={getCourseAvg}
                 typeIcon={EVENT_TYPE_ICON}
-                onDelete={() => deleteCourse(course.id)}
+                onDelete={async () => {
+                  if (!confirm("Are you sure you want to delete this course?")) return;
+                  // remove from local store immediately to keep events/categories/grades in sync
+                  deleteCourse(course.id);
+                  const API_BASE = "http://localhost:8000/api";
+                  try {
+                    const res = await fetch(`${API_BASE}/courses/${course.id}`, {
+                      method: "DELETE",
+                    });
+                    if (!res.ok) throw new Error("Failed to delete course");
+                    await loadCourses();
+                  } catch (err) {
+                    alert(err instanceof Error ? err.message : "Failed to delete course");
+                  }
+                }}
                 onUpload={() => {
                   setSelectedCourseId(course.id);
                   setSelectedCourseName((course as any).name ?? "");

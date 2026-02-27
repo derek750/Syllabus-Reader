@@ -132,7 +132,6 @@ async def update_course_details(course_id: str, request: UpdateCourseRequest):
 
 @router.delete("/courses/{course_id}")
 async def delete_course_endpoint(course_id: str):
-    """Delete a course and all associated syllabi."""
     try:
         delete_course(course_id)
         return {"success": True, "message": "Course deleted"}

@@ -3,6 +3,9 @@ import os
 from datetime import datetime
 from .supabase_client import insert_row, read_rows, update_row, delete_row
 
+# import here to avoid circular import if routes import courses
+from .pdf_storage import delete_syllabus_pdf
+
 
 def create_course(user_id: str, course_name: str, course_code: Optional[str] = None, 
                  semester: Optional[str] = None, instructor: Optional[str] = None) -> Dict[str, Any]:
@@ -29,7 +32,18 @@ def get_course(course_id: str) -> Dict[str, Any]:
 
 
 def delete_course(course_id: str) -> None:
-    """Delete a course and all associated syllabi."""
+    # first clean up syllabi linked to this course
+    syllabi = get_course_syllabi(course_id)
+    for syllabus in syllabi:
+        try:
+            # remove file from storage; ignore errors to continue
+            delete_syllabus_pdf(syllabus.get("file_path"))
+        except Exception:
+            pass
+        # remove DB entry
+        delete_syllabus(syllabus.get("id"))
+
+    # finally remove the course row
     delete_row("courses", "id", course_id)
 
 
