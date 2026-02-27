@@ -14,3 +14,6 @@ PyPDF2
 
 # File uploads
 python-multipart
+
+# AI / Gemini
+google-generativeai
