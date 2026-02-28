@@ -3,12 +3,13 @@ import {
   format,
   startOfMonth,
   endOfMonth,
+  startOfWeek,
+  addDays,
   eachDayOfInterval,
   isSameMonth,
   isSameDay,
   addMonths,
   subMonths,
-  getDay,
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar, BookOpen } from "lucide-react";
 import { useStore } from "@/store";
@@ -84,6 +85,8 @@ export function CalendarPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [courseFilter, setCourseFilter] = useState<string>("");
+  const [dayPopupDate, setDayPopupDate] = useState<Date | null>(null);
   const [updatingGradeId, setUpdatingGradeId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -181,13 +184,21 @@ export function CalendarPage() {
 
   const calendarItemsWithDate = calendarItems.filter(hasValidDate);
 
+  const filteredItems =
+    courseFilter === ""
+      ? calendarItemsWithDate
+      : calendarItemsWithDate.filter((item) => item.course_id === courseFilter);
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
-  const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
-  const startPad = getDay(monthStart);
+  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  // Always render a 6-week grid (42 days) so short months (e.g. February)
+  // still fill the calendar with prior/next month days.
+  const gridEnd = addDays(gridStart, 41);
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
 
   const dayEvents = (date: Date) =>
-    calendarItemsWithDate.filter((item) =>
+    filteredItems.filter((item) =>
       isSameDay(parseAssignmentDate(item.event_date), date)
     );
 
@@ -272,51 +283,66 @@ export function CalendarPage() {
     setDetailOpen(true);
   };
 
+  const openDayPopup = (date: Date) => {
+    setDayPopupDate(date);
+  };
+
+  const openAssignmentFromDay = (e: React.MouseEvent, item: CalendarItem) => {
+    e.stopPropagation();
+    setDayPopupDate(null);
+    setDetailItem(item);
+    setDetailOpen(true);
+  };
+
+  const dayPopupItems = dayPopupDate ? dayEvents(dayPopupDate) : [];
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading">Calendar</h1>
-          <p className="text-muted-foreground mt-1">Click an event to view details</p>
+    <div className="flex flex-col h-[calc(100vh-6rem)] min-h-[400px]">
+      <div className="flex items-center justify-between gap-4 flex-shrink-0 mb-3">
+        <div className="flex items-center gap-3">
+          <Select
+            value={courseFilter}
+            onValueChange={setCourseFilter}
+            options={[
+              { value: "", label: "View all" },
+              ...courses.map((c) => ({ value: c.id, label: c.name })),
+            ]}
+            placeholder="View course"
+            className="w-[200px]"
+          />
+          {courses.length > 0 && (
+            <Button size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Event
+            </Button>
+          )}
         </div>
-        {courses.length > 0 && (
+        <div className="flex items-center gap-1">
           <Button
-            size="sm"
-            className="gap-1"
-            onClick={() => setAddOpen(true)}
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+            aria-label="Previous month"
           >
-            <Plus className="h-4 w-4" />
-            Add Event
+            <ChevronLeft className="h-5 w-5" />
           </Button>
-        )}
+          <h2 className="text-lg font-semibold font-heading min-w-[160px] text-center">
+            {format(currentMonth, "MMMM yyyy")}
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+            aria-label="Next month"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-4 md:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <h2 className="text-xl font-semibold font-heading">
-              {format(currentMonth, "MMMM yyyy")}
-            </h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-              aria-label="Next month"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-px mb-1">
+      <Card className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <CardContent className="p-3 md:p-4 flex flex-col flex-1 min-h-0">
+          <div className="grid grid-cols-7 gap-px mb-1 flex-shrink-0">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div
                 key={d}
@@ -327,15 +353,12 @@ export function CalendarPage() {
             ))}
           </div>
 
-          {/* Calendar grid: day cells with event blocks */}
-          <div className="grid grid-cols-7 gap-px bg-border/50 rounded-b-lg overflow-hidden">
-            {Array.from({ length: startPad }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[100px] bg-muted/30" />
-            ))}
+          <div className="grid grid-cols-7 gap-px bg-border/50 rounded-b-lg overflow-auto flex-1 min-h-[55vh] auto-rows-min">
             {days.map((day) => {
               const de = dayEvents(day);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const isToday = isSameDay(day, new Date());
+              const isInMonth = isSameMonth(day, currentMonth);
               const visible = de.slice(0, MAX_VISIBLE_PER_DAY);
               const moreCount = de.length - MAX_VISIBLE_PER_DAY;
 
@@ -345,6 +368,7 @@ export function CalendarPage() {
                   role="button"
                   tabIndex={0}
                   onClick={() => setSelectedDate(day)}
+                  onDoubleClick={() => openDayPopup(day)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
@@ -352,7 +376,8 @@ export function CalendarPage() {
                     }
                   }}
                   className={cn(
-                    "min-h-[100px] flex flex-col border-b border-r border-border/50 last:border-r-0 bg-card transition-colors",
+                    "min-h-[100px] flex flex-col border-b border-r border-border/50 last:border-r-0 bg-card transition-colors cursor-pointer",
+                    !isInMonth && "bg-muted/20",
                     isSelected && "ring-2 ring-primary ring-inset",
                     isToday && !isSelected && "bg-primary/5"
                   )}
@@ -362,7 +387,7 @@ export function CalendarPage() {
                       "flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium self-end mt-0.5 mr-0.5",
                       isToday
                         ? "bg-primary text-primary-foreground"
-                        : isSameMonth(day, currentMonth)
+                        : isInMonth
                           ? "text-foreground"
                           : "text-muted-foreground/60"
                     )}
@@ -401,6 +426,52 @@ export function CalendarPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Day popup: all assignments/events on this day */}
+      <Modal open={!!dayPopupDate} onOpenChange={(open) => !open && setDayPopupDate(null)}>
+        {dayPopupDate && (
+          <>
+            <ModalHeader>
+              <ModalTitle>
+                {format(dayPopupDate, "EEEE, MMMM d, yyyy")}
+              </ModalTitle>
+            </ModalHeader>
+            <div className="space-y-2 max-h-[60vh] overflow-auto">
+              {dayPopupItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No assignments or events this day.</p>
+              ) : (
+                dayPopupItems.map((item) => {
+                  const course = courses.find((c) => c.id === item.course_id);
+                  const color = course?.color ?? "#6366f1";
+                  return (
+                    <button
+                      key={item.source === "assignment" ? `a-${item.id}` : item.id}
+                      type="button"
+                      onClick={(e) => openAssignmentFromDay(e, item)}
+                      className={cn(
+                        "w-full text-left rounded border-l-2 py-2 px-3 text-sm font-medium transition-opacity hover:opacity-90 flex items-center gap-2",
+                        TYPE_COLORS[item.type]
+                      )}
+                      style={{ borderLeftColor: color }}
+                    >
+                      <span>{TYPE_EMOJI[item.type]}</span>
+                      <span className="truncate">{item.title}</span>
+                      <span className="text-muted-foreground text-xs shrink-0">
+                        {course?.name ?? "—"}
+                      </span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="pt-3">
+              <Button variant="outline" size="sm" onClick={() => setDayPopupDate(null)}>
+                Close
+              </Button>
+            </div>
+          </>
+        )}
+      </Modal>
 
       {/* Event/Assignment detail popup */}
       <Modal open={detailOpen} onOpenChange={setDetailOpen}>
