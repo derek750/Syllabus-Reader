@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/Button";
+import { API_BASE } from "@/config";
 
 type GoogleCredentialResponse = { credential: string };
 type GoogleAccountsId = {
@@ -28,7 +29,7 @@ export function SignInPage() {
     const renderBtn = () => {
       (async () => {
         try {
-          const cfgRes = await fetch("/api/auth/google-config");
+          const cfgRes = await fetch(`${API_BASE}/auth/google-config`);
           const cfg = cfgRes.ok ? await cfgRes.json() : { client_id: "" };
           const clientId = cfg.client_id || "";
 
@@ -39,7 +40,7 @@ export function SignInPage() {
               callback: async (response: GoogleCredentialResponse) => {
                 const idToken = response.credential;
                 try {
-                  const res = await fetch("/api/auth/google", {
+                  const res = await fetch(`${API_BASE}/auth/google`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ id_token: idToken }),
