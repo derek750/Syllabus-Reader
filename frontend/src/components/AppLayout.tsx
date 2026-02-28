@@ -106,6 +106,25 @@ export function AppLayout({ children }: AppLayoutProps) {
         <div className="flex flex-col gap-0.5 mt-2 pt-2 border-t border-border/80">
           <button
             type="button"
+            onClick={() => setSidebarCollapsed((c) => !c)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "flex items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors min-w-0 w-full",
+              sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
+            )}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft className="h-4 w-4 shrink-0" />
+            ) : (
+              <>
+                <PanelLeftClose className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">Collapse</span>
+              </>
+            )}
+          </button>
+          <button
+            type="button"
             onClick={() => setDark((d) => !d)}
             title={dark ? "Switch to light mode" : "Switch to dark mode"}
             className={cn(
@@ -142,25 +161,6 @@ export function AppLayout({ children }: AppLayoutProps) {
             >
               Sign out
             </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setSidebarCollapsed((c) => !c)}
-            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className={cn(
-              "flex items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors min-w-0 w-full",
-              sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
-            )}
-          >
-            {sidebarCollapsed ? (
-              <PanelLeft className="h-4 w-4 shrink-0" />
-            ) : (
-              <>
-                <PanelLeftClose className="h-4 w-4 shrink-0" />
-                <span className="whitespace-nowrap">Collapse</span>
-              </>
-            )}
           </button>
         </div>
       </aside>
