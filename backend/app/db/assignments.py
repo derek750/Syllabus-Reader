@@ -49,6 +49,12 @@ def delete_assignment(assignment_id: str) -> None:
     """Delete an assignment."""
     delete_row("assignments", "id", assignment_id)
 
+def delete_assignments_for_course(course_id: str) -> None:
+    """Delete all assignments linked to a course."""
+    assignments = get_course_assignments(course_id)
+    for assignment in assignments:
+        delete_assignment(assignment.get("id"))
+
 
 __all__ = [
     "create_assignment",

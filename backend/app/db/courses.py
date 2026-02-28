@@ -5,6 +5,7 @@ from .supabase_client import insert_row, read_rows, update_row, delete_row
 
 # import here to avoid circular import if routes import courses
 from .pdf_storage import delete_syllabus_pdf
+from .assignments import delete_assignments_for_course
 
 
 def create_course(user_id: str, course_name: str, course_code: Optional[str] = None, 
@@ -42,6 +43,9 @@ def delete_course(course_id: str) -> None:
             pass
         # remove DB entry
         delete_syllabus(syllabus.get("id"))
+
+    # remove all assignments linked to this course
+    delete_assignments_for_course(course_id)
 
     # finally remove the course row
     delete_row("courses", "id", course_id)
