@@ -54,6 +54,7 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
     - due_date: str (ISO date if possible, otherwise empty)
     - worth: float or int percentage if available, otherwise null
     - extra_info: str
+    - location: str (optional, e.g. room, building, or "online")
     """
     if not text.strip():
         return []
@@ -74,7 +75,9 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
         "- worth: the percentage of the final grade as a number only (e.g. 15 for "
         "15%), or null if not specified\n"
         "- extra_info: any additional useful details (e.g., description, page "
-        'range, milestone info).\n\n'
+        "range, milestone info)\n"
+        "- location: where it takes place if specified (e.g., room number, building, "
+        '"online"), or empty string\n\n'
         "Return JSON ONLY in one of these forms:\n"
         '1) A top-level array of assignment objects, OR\n'
         '2) An object {\"assignments\": [...]}.\n\n'
@@ -119,6 +122,7 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
             worth = None
 
         extra_info = str(item.get("extra_info", "") or "").strip()
+        location = str(item.get("location", "") or "").strip()
 
         normalized.append(
             {
@@ -126,6 +130,7 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
                 "due_date": due_date,
                 "worth": worth,
                 "extra_info": extra_info,
+                "location": location or None,
             }
         )
 

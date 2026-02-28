@@ -30,6 +30,7 @@ class CreateAssignmentRequest(BaseModel):
     due_date: str
     worth: float
     extra_info: Optional[str] = None
+    location: Optional[str] = None
 
 
 class UpdateAssignmentRequest(BaseModel):
@@ -37,6 +38,7 @@ class UpdateAssignmentRequest(BaseModel):
     due_date: Optional[str] = None
     worth: Optional[float] = None
     extra_info: Optional[str] = None
+    location: Optional[str] = None
 
 
 __all__ = [

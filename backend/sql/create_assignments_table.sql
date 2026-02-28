@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.assignments (
   due_date timestamptz NOT NULL,
   worth numeric NOT NULL,
   extra_info text,
+  location text,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );

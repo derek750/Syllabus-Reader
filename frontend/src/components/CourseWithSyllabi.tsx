@@ -22,6 +22,7 @@ interface Assignment {
   due_date: string;
   worth: number;
   extra_info?: string | null;
+  location?: string | null;
   created_at: string;
 }
 
@@ -30,6 +31,7 @@ interface ExtractedAssignment {
   due_date: string;
   worth: number | null;
   extra_info?: string | null;
+  location?: string | null;
 }
 
 interface CourseWithSyllabiProps {
@@ -68,6 +70,7 @@ export function CourseWithSyllabi({
   const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
   const [newAssignmentWorth, setNewAssignmentWorth] = useState<string>("");
   const [newAssignmentExtraInfo, setNewAssignmentExtraInfo] = useState("");
+  const [newAssignmentLocation, setNewAssignmentLocation] = useState("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [saveAssignmentError, setSaveAssignmentError] = useState("");
 
@@ -153,6 +156,7 @@ export function CourseWithSyllabi({
           due_date: newAssignmentDueDate,
           worth: worthNumber,
           extra_info: newAssignmentExtraInfo.trim() || null,
+          location: newAssignmentLocation.trim() || null,
         }),
       });
       if (!response.ok) {
@@ -166,6 +170,7 @@ export function CourseWithSyllabi({
       setNewAssignmentDueDate("");
       setNewAssignmentWorth("");
       setNewAssignmentExtraInfo("");
+      setNewAssignmentLocation("");
     } catch (error) {
       setSaveAssignmentError(
         error instanceof Error ? error.message : "Failed to create assignment"
@@ -365,11 +370,15 @@ export function CourseWithSyllabi({
                                     !Number.isNaN(a.worth) && (
                                       <>
                                         Worth {a.worth}%{" "}
-                                        {a.extra_info && (
+                                        {(a.location || a.extra_info) && (
                                           <span className="mx-1">•</span>
                                         )}
                                       </>
                                     )}
+                                  {a.location}
+                                  {a.location && a.extra_info && (
+                                    <span className="mx-1">•</span>
+                                  )}
                                   {a.extra_info}
                                 </div>
                               </div>
@@ -435,6 +444,12 @@ export function CourseWithSyllabi({
                   onChange={(e) => setNewAssignmentExtraInfo(e.target.value)}
                   disabled={savingAssignment}
                 />
+                <Input
+                  placeholder="Location (optional)"
+                  value={newAssignmentLocation}
+                  onChange={(e) => setNewAssignmentLocation(e.target.value)}
+                  disabled={savingAssignment}
+                />
                 <div className="flex items-center justify-between">
                   <Button
                     size="sm"
@@ -478,6 +493,9 @@ export function CourseWithSyllabi({
                           Due {formatDate(assignment.due_date)} • Worth{" "}
                           {assignment.worth}
                           %
+                          {assignment.location
+                            ? ` • ${assignment.location}`
+                            : ""}
                           {assignment.extra_info
                             ? ` • ${assignment.extra_info}`
                             : ""}
