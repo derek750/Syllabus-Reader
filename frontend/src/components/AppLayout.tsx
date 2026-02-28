@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, LayoutDashboard, CalendarDays, GraduationCap, LogOut, Moon, Sun } from "lucide-react";
+import { BookOpen, LayoutDashboard, CalendarDays, GraduationCap, LogOut, Moon, Sun, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -20,6 +20,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const { reset } = useStore();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (dark) {
@@ -54,29 +55,50 @@ export function AppLayout({ children }: AppLayoutProps) {
         Skip to main content
       </a>
 
-      <aside className="hidden md:flex w-64 flex-col border-r border-border/80 bg-card/60 backdrop-blur-md p-4 gap-2 shrink-0">
-        <div className="flex items-center gap-3 px-3 py-4 mb-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+      <aside
+        className={cn(
+          "hidden md:flex flex-col border-r border-border/80 bg-card/60 backdrop-blur-md gap-2 shrink-0 transition-[width] duration-200 overflow-hidden",
+          sidebarCollapsed ? "w-20 p-2" : "w-64 p-4"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center py-4 mb-2 min-w-0 w-full",
+            sidebarCollapsed ? "justify-center gap-0 px-0" : "gap-3 px-3"
+          )}
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
             <BookOpen className="h-5 w-5" />
           </div>
-          <span className="text-lg font-bold tracking-tight font-heading">
-            Syllabus Reader
-          </span>
+          {!sidebarCollapsed && (
+            <span className="text-lg font-bold tracking-tight font-heading whitespace-nowrap">
+              Syllabus Reader
+            </span>
+          )}
         </div>
         <nav className="flex flex-col gap-0.5 flex-1" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.to}
               to={item.to}
+              title={sidebarCollapsed ? item.label : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "flex items-center rounded-xl py-2.5 text-sm font-medium transition-all duration-200 min-w-0 w-full",
+                sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3",
                 isActive(item.to)
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
-              {item.label}
+              <span
+                className={cn(
+                  "whitespace-nowrap transition-all duration-200",
+                  sidebarCollapsed && "w-0 overflow-hidden opacity-0"
+                )}
+              >
+                {item.label}
+              </span>
             </Link>
           ))}
         </nav>
@@ -85,19 +107,60 @@ export function AppLayout({ children }: AppLayoutProps) {
           <button
             type="button"
             onClick={() => setDark((d) => !d)}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors"
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            className={cn(
+              "flex items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors min-w-0 w-full",
+              sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
+            )}
             aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
           >
-            {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            {dark ? "Light" : "Dark"}
+            {dark ? <Sun className="h-4 w-4 shrink-0" /> : <Moon className="h-4 w-4 shrink-0" />}
+            <span
+              className={cn(
+                "whitespace-nowrap transition-all duration-200",
+                sidebarCollapsed && "w-0 overflow-hidden opacity-0"
+              )}
+            >
+              {dark ? "Light" : "Dark"}
+            </span>
           </button>
           <button
             type="button"
             onClick={onSignOut}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Sign out"
+            className={cn(
+              "flex items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors min-w-0 w-full",
+              sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
+            )}
           >
-            <LogOut className="h-4 w-4" />
-            Sign out
+            <LogOut className="h-4 w-4 shrink-0" />
+            <span
+              className={cn(
+                "whitespace-nowrap transition-all duration-200",
+                sidebarCollapsed && "w-0 overflow-hidden opacity-0"
+              )}
+            >
+              Sign out
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((c) => !c)}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className={cn(
+              "flex items-center rounded-xl py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-colors min-w-0 w-full",
+              sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
+            )}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft className="h-4 w-4 shrink-0" />
+            ) : (
+              <>
+                <PanelLeftClose className="h-4 w-4 shrink-0" />
+                <span className="whitespace-nowrap">Collapse</span>
+              </>
+            )}
           </button>
         </div>
       </aside>
