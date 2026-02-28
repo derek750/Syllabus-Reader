@@ -172,14 +172,17 @@ async def delete_course_endpoint(course_id: str):
 
 
 @router.get("/courses/{course_id}/assignments")
-async def list_course_assignments(course_id: str):
-    """Get all assignments for a course."""
+async def list_course_assignments(course_id: str, include_archived: bool = False):
+    """Get assignments for a course.
+
+    By default archived assignments are excluded; pass include_archived=true to include them.
+    """
     try:
         course = get_course(course_id)
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        assignments = get_course_assignments(course_id)
+        assignments = get_course_assignments(course_id, include_archived=include_archived)
         return {"success": True, "assignments": assignments}
     except HTTPException:
         raise
@@ -204,6 +207,7 @@ async def create_course_assignment(course_id: str, request: CreateAssignmentRequ
             extra_info=request.extra_info,
             location=request.location,
             grade=request.grade,
+            archived=request.archived,
         )
         return {"success": True, "assignment": assignment}
     except HTTPException:

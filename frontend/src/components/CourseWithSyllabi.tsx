@@ -26,6 +26,7 @@ interface Assignment {
   extra_info?: string | null;
   location?: string | null;
   grade?: number | null;
+  archived?: boolean | null;
   created_at: string;
 }
 

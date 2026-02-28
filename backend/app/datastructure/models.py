@@ -33,6 +33,7 @@ class CreateAssignmentRequest(BaseModel):
     extra_info: Optional[str] = None
     location: Optional[str] = None
     grade: Optional[float] = None
+    archived: Optional[bool] = None
 
 
 class UpdateAssignmentRequest(BaseModel):
@@ -43,6 +44,7 @@ class UpdateAssignmentRequest(BaseModel):
     extra_info: Optional[str] = None
     location: Optional[str] = None
     grade: Optional[float] = None
+    archived: Optional[bool] = None
 
 
 __all__ = [

@@ -38,6 +38,7 @@ export interface Assignment {
   extra_info?: string | null;
   location?: string | null;
   grade?: number | null;
+  archived?: boolean | null;
   created_at: string;
 }
 
@@ -102,7 +103,7 @@ export function CourseDetailPage() {
     if (!courseId) return;
     setAssignmentsLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/courses/${courseId}/assignments`);
+      const res = await fetch(`${API_BASE}/courses/${courseId}/assignments?include_archived=true`);
       if (!res.ok) throw new Error("Failed to load assignments");
       const data = await res.json();
       const list = data.assignments || [];
@@ -230,6 +231,28 @@ export function CourseDetailPage() {
     }
   };
 
+  const handleToggleArchive = async (assignmentId: string, archived: boolean) => {
+    try {
+      const response = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived }),
+      });
+      if (!response.ok) throw new Error("Failed to update assignment");
+      const data = await response.json();
+      const newArchived = data.assignment?.archived ?? archived;
+      setAssignments((prev) =>
+        prev.map((a) => (a.id === assignmentId ? { ...a, archived: newArchived } : a))
+      );
+      setSelectedAssignment((prev) =>
+        prev && prev.id === assignmentId ? { ...prev, archived: newArchived } : prev
+      );
+    } catch {
+      // surface via generic error banner
+      setError("Failed to update assignment");
+    }
+  };
+
   const sanitizeExtractedForCreate = (a: ExtractedAssignment) => {
     const worth =
       typeof a.worth === "number" && !Number.isNaN(a.worth) ? Math.max(0, a.worth) : 0;
@@ -322,6 +345,9 @@ export function CourseDetailPage() {
     ...a,
     _color: CHART_COLORS[idx % CHART_COLORS.length],
   }));
+  const archivedAssignments = assignmentsWithColors.filter((a) => a.archived);
+  const visibleAssignments = assignmentsWithColors.filter((a) => !a.archived);
+  const [archivedModalOpen, setArchivedModalOpen] = useState(false);
 
   const weightsPieData =
     assignmentsWithColors.length > 0
@@ -477,11 +503,11 @@ export function CourseDetailPage() {
         {course && (
           <Card className="overflow-hidden">
             <CardHeader className="border-b bg-muted/30">
-              <CardTitle className="flex items-center justify-between gap-3">
-                <span className="flex items-center gap-2">
+              <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5" />
-                  Assignments
-                </span>
+                  <span>Assignments</span>
+                </div>
                 <div className="flex items-center gap-2">
                   <Button
                     size="sm"
@@ -507,7 +533,7 @@ export function CourseDetailPage() {
                     <div className="flex items-center justify-center py-12 text-muted-foreground">
                       Loading assignments…
                     </div>
-                  ) : assignments.length === 0 ? (
+                  ) : visibleAssignments.length === 0 && archivedAssignments.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                       <FileText className="h-12 w-12 mb-3 opacity-50" />
                       <p>No assignments yet. Read a syllabus to add some.</p>
@@ -571,9 +597,20 @@ export function CourseDetailPage() {
                       ) : null}
 
                       <div>
-                        <h4 className="font-medium mb-3">All assignments</h4>
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-medium">All assignments</h4>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => setArchivedModalOpen(true)}
+                            disabled={archivedAssignments.length === 0}
+                          >
+                            Archived
+                          </Button>
+                        </div>
                         <ul className="space-y-2">
-                          {assignmentsWithColors.map((a) => (
+                          {visibleAssignments.map((a) => (
                             <li key={a.id}>
                               <button
                                 type="button"
@@ -595,11 +632,25 @@ export function CourseDetailPage() {
                                     />
                                     <span className="font-medium truncate">{a.name}</span>
                                   </span>
-                                  <span className="text-sm text-muted-foreground shrink-0">
-                                    {chartMode === "weights"
-                                      ? `${round2(a.worth)}%`
-                                      : `${round2(a.grade ?? 0)}%`}
-                                  </span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-sm text-muted-foreground">
+                                      {chartMode === "weights"
+                                        ? `${round2(a.worth)}%`
+                                        : `${round2(a.grade ?? 0)}%`}
+                                    </span>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleToggleArchive(a.id, true);
+                                      }}
+                                      title="Archive assignment"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-1">
                                   Due {formatDate(a.due_date)}
@@ -749,6 +800,50 @@ export function CourseDetailPage() {
           courseName={course?.course_name ?? "Course"}
         />
       )}
+
+      <Modal
+        open={archivedModalOpen}
+        onOpenChange={setArchivedModalOpen}
+        className="max-w-xl"
+      >
+        <ModalHeader>
+          <ModalTitle>Archived assignments</ModalTitle>
+        </ModalHeader>
+
+        <div className="space-y-2 max-h-[50vh] min-h-[240px] overflow-auto pr-1">
+          {archivedAssignments.length === 0 ? (
+            <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground text-center">
+              No archived assignments.
+            </div>
+          ) : (
+            archivedAssignments.map((a) => (
+              <div
+                key={a.id}
+                className="rounded-xl border border-border/80 bg-background px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{a.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Due {formatDate(a.due_date)}
+                      {formatAssignmentTime(a.due_time) &&
+                        ` at ${formatAssignmentTime(a.due_time)}`}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => handleToggleArchive(a.id, false)}
+                  >
+                    Unarchive
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
 
       <Modal open={extractedModalOpen} onOpenChange={setExtractedModalOpen} className="max-w-2xl">
         <ModalHeader>

@@ -13,6 +13,7 @@ def create_assignment(
     location: Optional[str] = None,
     grade: Optional[float] = None,
     due_time: Optional[str] = None,
+    archived: Optional[bool] = False,
 ) -> Dict[str, Any]:
     """Create a new assignment for a course. due_date may be None if unknown."""
     data = {
@@ -23,6 +24,7 @@ def create_assignment(
         "location": location,
         "grade": grade,
         "due_time": due_time,
+        "archived": bool(archived) if archived is not None else False,
     }
     if due_date is not None and str(due_date).strip():
         data["due_date"] = due_date.strip()
@@ -31,9 +33,12 @@ def create_assignment(
     return insert_row("assignments", data)
 
 
-def get_course_assignments(course_id: str) -> List[Dict[str, Any]]:
-    """Get all assignments for a course."""
-    return read_rows("assignments", query={"course_id": course_id})
+def get_course_assignments(course_id: str, include_archived: bool = False) -> List[Dict[str, Any]]:
+    """Get assignments for a course, optionally including archived ones."""
+    query: Dict[str, Any] = {"course_id": course_id}
+    if not include_archived:
+        query["archived"] = False
+    return read_rows("assignments", query=query)
 
 
 def get_assignment(assignment_id: str) -> Dict[str, Any]:
