@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, type SVGProps, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, LayoutDashboard, CalendarDays, GraduationCap, LogOut, Moon, Sun, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,46 @@ const NAV_ITEMS = [
   { to: "/grades", label: "Grades", icon: GraduationCap },
 ] as const;
 
+function GeminiLogo(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 32 32" aria-hidden="true" {...props}>
+      <defs>
+        <radialGradient id="gemini-gradient" cx="30%" cy="20%" r="80%">
+          <stop offset="0%" stopColor="#8ab4ff" />
+          <stop offset="40%" stopColor="#4f46e5" />
+          <stop offset="100%" stopColor="#0f172a" />
+        </radialGradient>
+      </defs>
+      <rect
+        x="3"
+        y="6"
+        width="26"
+        height="20"
+        rx="6"
+        fill="url(#gemini-gradient)"
+      />
+      <rect
+        x="9"
+        y="10"
+        width="3"
+        height="12"
+        rx="1.5"
+        fill="white"
+        opacity="0.85"
+      />
+      <rect
+        x="20"
+        y="10"
+        width="3"
+        height="12"
+        rx="1.5"
+        fill="white"
+        opacity="0.85"
+      />
+    </svg>
+  );
+}
+
 interface AppLayoutProps {
   children: ReactNode;
 }
@@ -21,6 +61,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { reset } = useStore();
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [aiAgentOpen, setAiAgentOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiHistory, setAiHistory] = useState<string[]>([]);
 
   useEffect(() => {
     if (dark) {
@@ -44,6 +87,13 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+
+  const handleAddPrompt = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setAiHistory((prev) => [trimmed, ...prev].slice(0, 50));
+    setAiPrompt("");
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -103,7 +153,26 @@ export function AppLayout({ children }: AppLayoutProps) {
           ))}
         </nav>
 
-        <div className="flex flex-col gap-0.5 mt-2 pt-2 border-t border-border/80">
+        <button
+          type="button"
+          onClick={() => setAiAgentOpen(true)}
+          className={cn(
+            "mb-2 flex items-center rounded-xl py-2.5 text-sm font-medium transition-all duration-200 min-w-0 w-full border border-dashed border-primary/40 bg-primary/5 text-primary hover:bg-primary/10",
+            sidebarCollapsed ? "justify-center px-0" : "gap-3 px-3"
+          )}
+        >
+          <GeminiLogo className="h-4 w-4 shrink-0" />
+          <span
+            className={cn(
+              "whitespace-nowrap transition-all duration-200",
+              sidebarCollapsed && "w-0 overflow-hidden opacity-0"
+            )}
+          >
+            AI Agent
+          </span>
+        </button>
+
+        <div className="flex flex-col gap-0.5 pt-2 border-t border-border/80">
           <button
             type="button"
             onClick={() => setSidebarCollapsed((c) => !c)}
@@ -180,6 +249,16 @@ export function AppLayout({ children }: AppLayoutProps) {
               {item.label}
             </Link>
           ))}
+          <button
+            type="button"
+            onClick={() => setAiAgentOpen(true)}
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors text-primary"
+            )}
+          >
+            <GeminiLogo className="h-5 w-5" />
+            AI Agent
+          </button>
         </nav>
       </div>
 
@@ -211,6 +290,103 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </div>
       </main>
+      {aiAgentOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-background/80 backdrop-blur-sm px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="AI Agent"
+        >
+          <div className="w-full max-w-xl rounded-2xl border border-border/80 bg-card shadow-2xl shadow-black/40">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border/80">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-xl overflow-hidden shadow-sm ring-1 ring-primary/40 bg-background">
+                  <GeminiLogo className="h-full w-full" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold leading-tight truncate">
+                    AI Agent
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Save prompts you&apos;ve used with Gemini. No responses are shown here.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAiAgentOpen(false)}
+                className="rounded-full px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-muted/70 hover:text-foreground"
+              >
+                Close
+              </button>
+            </div>
+            <form
+              className="px-5 pt-4 pb-3 space-y-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleAddPrompt(aiPrompt);
+              }}
+            >
+              <label className="block text-xs font-medium text-muted-foreground mb-1">
+                Prompt
+              </label>
+              <textarea
+                value={aiPrompt}
+                onChange={(e) => setAiPrompt(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-xl border border-border/80 bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                placeholder="Type a prompt you want to remember. Gemini will not respond here."
+              />
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Prompts are stored only for this session and are never sent from this page.
+                </p>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={!aiPrompt.trim()}
+                >
+                  Save prompt
+                </button>
+              </div>
+            </form>
+            <div className="px-5 pb-4">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  History
+                </p>
+                {aiHistory.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setAiHistory([])}
+                    className="text-[11px] text-muted-foreground hover:text-destructive"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+              <div className="max-h-64 overflow-y-auto rounded-xl border border-dashed border-border/60 bg-muted/40 p-2">
+                {aiHistory.length === 0 ? (
+                  <p className="text-xs text-muted-foreground px-1 py-2">
+                    No prompts yet. Add one above to start your history.
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {aiHistory.map((prompt, index) => (
+                      <li
+                        key={index}
+                        className="rounded-lg bg-background/80 px-2.5 py-2 text-xs text-foreground shadow-sm border border-border/60"
+                      >
+                        {prompt}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
