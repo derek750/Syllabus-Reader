@@ -1,18 +1,30 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 import { Button } from "@/components/Button";
+
+type GoogleCredentialResponse = { credential: string };
+type GoogleAccountsId = {
+  initialize: (opts: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+  renderButton: (el: HTMLElement, opts: { theme: string; size: string; width?: number }) => void;
+};
+type GoogleIdentityServices = { accounts: { id: GoogleAccountsId } };
+
+declare global {
+  interface Window {
+    google?: GoogleIdentityServices;
+  }
+}
 
 export function SignInPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // If already signed in, redirect to dashboard
     const existing = localStorage.getItem("user");
     if (existing) {
       navigate("/");
       return;
     }
-    // Fetch client ID from backend then render Google Sign-In button
     const renderBtn = () => {
       (async () => {
         try {
@@ -20,12 +32,11 @@ export function SignInPage() {
           const cfg = cfgRes.ok ? await cfgRes.json() : { client_id: "" };
           const clientId = cfg.client_id || "";
 
-          // @ts-ignore - global provided by Google Identity Services
-          if (window.google && window.google.accounts && window.google.accounts.id) {
-            // @ts-ignore
-            window.google.accounts.id.initialize({
+          const googleId = window.google?.accounts?.id;
+          if (googleId) {
+            googleId.initialize({
               client_id: clientId,
-              callback: async (response: any) => {
+              callback: async (response: GoogleCredentialResponse) => {
                 const idToken = response.credential;
                 try {
                   const res = await fetch("/api/auth/google", {
@@ -35,7 +46,6 @@ export function SignInPage() {
                   });
                   if (!res.ok) throw new Error("Auth failed");
                   const data = await res.json();
-                  // Store basic user info in localStorage
                   localStorage.setItem("user", JSON.stringify(data.user || {}));
                   navigate("/");
                 } catch (err) {
@@ -45,11 +55,11 @@ export function SignInPage() {
               },
             });
 
-            // @ts-ignore
-            window.google.accounts.id.renderButton(document.getElementById("google-signin")!, {
-              theme: "outline",
-              size: "large",
-            });
+            const host = document.getElementById("google-signin");
+            if (host) {
+              // Width 240–400px per Google's API; match card content width (max-w-md minus padding)
+              googleId.renderButton(host, { theme: "outline", size: "large", width: 400 });
+            }
           }
         } catch (e) {
           /* ignore */
@@ -57,25 +67,51 @@ export function SignInPage() {
       })();
     };
 
-    // Small timeout to allow library to load
     const t = setTimeout(renderBtn, 300);
     return () => clearTimeout(t);
   }, [navigate]);
 
   return (
-    <div className="max-w-md mx-auto py-24 px-6">
-      <h1 className="text-2xl font-bold mb-6">Sign in</h1>
-      <p className="mb-6 text-muted-foreground">Sign in with your Google account to access your dashboard.</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-background to-muted/30 px-6 py-12">
+      <div className="w-full max-w-md space-y-8">
+        <div className="text-center">
+          <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20 mb-6">
+            <BookOpen className="h-7 w-7" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight font-heading">Syllabus Reader</h1>
+          <p className="text-muted-foreground mt-2">Sign in to manage your courses and deadlines</p>
+        </div>
 
-      <div id="google-signin" className="mb-4" />
+        <div className="rounded-xl border border-border/80 bg-card p-6 shadow-card space-y-6">
+          <h2 className="text-lg font-semibold font-heading">Sign in</h2>
+          <p className="text-sm text-muted-foreground">
+            Use your Google account to access your dashboard.
+          </p>
 
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground">Or use a demo sign-in</p>
-        <Button onClick={() => {
-          // demo sign-in: store a minimal user object
-          localStorage.setItem("user", JSON.stringify({ email: "demo@example.com" }));
-          window.location.href = "/";
-        }} className="mt-3">Continue as Demo</Button>
+          <div id="google-signin" className="flex justify-center min-h-[44px]" />
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-wider">
+              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                localStorage.setItem("user", JSON.stringify({ email: "demo@example.com" }));
+                window.location.href = "/";
+              }}
+            >
+              Continue as Demo
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

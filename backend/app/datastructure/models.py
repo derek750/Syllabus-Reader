@@ -27,12 +27,13 @@ class UpdateCourseRequest(BaseModel):
 
 class CreateAssignmentRequest(BaseModel):
     name: str
-    due_date: str
+    due_date: Optional[str] = None  # YYYY-MM-DD; null = no date (e.g. unknown from syllabus)
     due_time: Optional[str] = None  # "HH:mm" or "HH:mm:ss"
     worth: float
     extra_info: Optional[str] = None
     location: Optional[str] = None
     grade: Optional[float] = None
+    archived: Optional[bool] = None
 
 
 class UpdateAssignmentRequest(BaseModel):
@@ -43,6 +44,7 @@ class UpdateAssignmentRequest(BaseModel):
     extra_info: Optional[str] = None
     location: Optional[str] = None
     grade: Optional[float] = None
+    archived: Optional[bool] = None
 
 
 __all__ = [

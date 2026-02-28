@@ -30,13 +30,13 @@ export function Modal({ open, onOpenChange, children, className }: ModalProps) {
       aria-modal="true"
     >
       <div
-        className="fixed inset-0 bg-black/50"
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
         onClick={() => onOpenChange(false)}
         aria-hidden
       />
       <div
         className={cn(
-          "relative z-50 w-full max-w-lg rounded-xl border bg-card p-6 shadow-lg",
+          "relative z-50 w-full max-w-lg rounded-xl border border-border/80 bg-card p-6 shadow-modal",
           className
         )}
         onClick={(e) => e.stopPropagation()}
@@ -53,5 +53,5 @@ export function ModalHeader({ className, ...props }: React.HTMLAttributes<HTMLDi
 }
 
 export function ModalTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn("text-lg font-semibold", className)} {...props} />;
+  return <h2 className={cn("text-lg font-semibold font-heading tracking-tight", className)} {...props} />;
 }

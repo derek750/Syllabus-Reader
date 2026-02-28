@@ -114,12 +114,54 @@ async def create_new_course(user_id: str, request: CreateCourseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Match frontend COURSE_COLORS so list and dashboard use same palette
+_COURSE_COLORS = [
+    "#6366f1", "#ec4899", "#f59e0b", "#10b981",
+    "#3b82f6", "#8b5cf6", "#ef4444", "#06b6d4",
+]
+
+
+def _course_color_for_id(course_id: str) -> str:
+    h = 0
+    for c in course_id:
+        h = (h * 31 + ord(c)) & 0xFFFFFFFF
+    return _COURSE_COLORS[h % len(_COURSE_COLORS)]
+
+
+def _course_average_grade(course_id: str) -> float | None:
+    assignments = get_course_assignments(course_id)
+    total_weighted = 0.0
+    total_weight = 0.0
+    for a in assignments:
+        worth = float(a.get("worth") or 0)
+        grade = a.get("grade")
+        if grade is not None and worth > 0:
+            total_weighted += float(grade) * (worth / 100.0)
+            total_weight += worth
+    if total_weight <= 0:
+        return None
+    return round((total_weighted / total_weight) * 100, 2)
+
+
 @router.get("/courses")
 async def get_courses(user_id: str):
     """Get all courses for the user."""
     try:
         courses = get_user_courses(user_id)
-        return {"success": True, "courses": courses}
+        out = []
+        for c in courses:
+            course_id = c.get("id")
+            if not course_id:
+                out.append(c)
+                continue
+            payload = dict(c)
+            payload["color"] = _course_color_for_id(str(course_id))
+            avg = _course_average_grade(str(course_id))
+            payload["average_grade"] = avg
+            metadata = (c.get("metadata") or {}) if isinstance(c.get("metadata"), dict) else {}
+            payload["description"] = metadata.get("description") or None
+            out.append(payload)
+        return {"success": True, "courses": out}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -172,14 +214,17 @@ async def delete_course_endpoint(course_id: str):
 
 
 @router.get("/courses/{course_id}/assignments")
-async def list_course_assignments(course_id: str):
-    """Get all assignments for a course."""
+async def list_course_assignments(course_id: str, include_archived: bool = False):
+    """Get assignments for a course.
+
+    By default archived assignments are excluded; pass include_archived=true to include them.
+    """
     try:
         course = get_course(course_id)
         if not course:
             raise HTTPException(status_code=404, detail="Course not found")
 
-        assignments = get_course_assignments(course_id)
+        assignments = get_course_assignments(course_id, include_archived=include_archived)
         return {"success": True, "assignments": assignments}
     except HTTPException:
         raise
@@ -198,12 +243,13 @@ async def create_course_assignment(course_id: str, request: CreateAssignmentRequ
         assignment = create_assignment(
             course_id=course_id,
             name=request.name,
-            due_date=request.due_date,
+            due_date=request.due_date if (request.due_date and str(request.due_date).strip()) else None,
             due_time=request.due_time,
             worth=request.worth,
             extra_info=request.extra_info,
             location=request.location,
             grade=request.grade,
+            archived=request.archived,
         )
         return {"success": True, "assignment": assignment}
     except HTTPException:

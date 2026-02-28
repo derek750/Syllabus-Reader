@@ -1,100 +1,65 @@
-import { format, isPast, isToday } from "date-fns";
-import { Trash2, Upload } from "lucide-react";
-import type { Course, Event, GradeCategory, Grade } from "@/types";
-import { parseAssignmentDate } from "@/lib/utils";
+import { Trash2 } from "lucide-react";
+import type { Course, Assignment } from "@/types";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 
 interface CourseCardProps {
   course: Course;
-  events: Event[];
-  categories: GradeCategory[];
-  grades: Grade[];
-  getCourseAvg: (
-    courseId: string,
-    categories: GradeCategory[],
-    grades: Grade[]
-  ) => number | null;
-  typeIcon: Record<string, string>;
+  assignments: Assignment[];
   onDelete: () => void;
-  onUpload?: () => void;
   onClick?: () => void;
 }
 
 export function CourseCard({
   course,
-  events,
-  categories,
-  grades,
-  getCourseAvg,
-  typeIcon,
+  assignments,
   onDelete,
-  onUpload,
   onClick,
 }: CourseCardProps) {
-  const avg = getCourseAvg(course.id, categories, grades);
-  const courseEvents = events.filter((e) => e.course_id === course.id);
-  const nextEvent = courseEvents.find(
-    (e) => !isPast(parseAssignmentDate(e.event_date)) || isToday(parseAssignmentDate(e.event_date))
-  );
+  const avg = course.average_grade ?? null;
 
   return (
     <Card
-      className="relative overflow-hidden cursor-pointer transition hover:shadow-md"
+      className="relative overflow-hidden cursor-pointer transition hover:shadow-md flex flex-col h-[140px]"
       onClick={onClick}
     >
-      <div className="h-1.5" style={{ backgroundColor: course.color }} />
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg">{course.name}</CardTitle>
-            {course.semester && (
-              <p className="text-sm text-muted-foreground">{course.semester}</p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {onUpload && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onUpload();
-                }}
-                title="Upload syllabus"
-              >
-                <Upload className="h-4 w-4" />
-              </Button>
-            )}
+      <div className="h-1.5 flex-shrink-0" style={{ backgroundColor: course.color }} />
+      <CardHeader className="pb-1 pt-3 px-4 flex-shrink-0">
+        <div className="flex items-start justify-between gap-2">
+          <CardTitle className="text-base font-heading truncate min-w-0 flex-1">
+            {course.name}
+          </CardTitle>
+          <div className="flex items-center gap-1 flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">{courseEvents.length} events</span>
-          {avg !== null && <span className="font-medium">{avg.toFixed(1)}%</span>}
+      <CardContent className="px-4 pt-0 pb-4 flex-1 flex flex-col min-h-0">
+        <div className="h-5 flex items-center text-xs text-muted-foreground flex-shrink-0">
+          {course.code && (
+            <span className="uppercase tracking-wide font-medium">{course.code}</span>
+          )}
+          {course.code && course.semester && (
+            <span className="mx-1.5">·</span>
+          )}
+          {course.semester && <span>{course.semester}</span>}
         </div>
-        {nextEvent && (
-          <div className="text-sm bg-muted rounded-lg px-3 py-2">
-            <span className="mr-1">{typeIcon[nextEvent.type] ?? "📌"}</span>
-            <span className="font-medium">{nextEvent.title}</span>
-            <span className="text-muted-foreground ml-2">
-              {format(parseAssignmentDate(nextEvent.event_date), "MMM d")}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center justify-between text-xs mt-auto pt-4 flex-shrink-0">
+          <span className="text-muted-foreground">{assignments.length} assignments</span>
+          <span className="font-medium tabular-nums">
+            {avg !== null ? `${avg.toFixed(1)}%` : "—"}
+          </span>
+        </div>
       </CardContent>
     </Card>
   );

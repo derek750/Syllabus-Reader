@@ -62,6 +62,16 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        pill: "9999px",
+      },
+      fontFamily: {
+        sans: ["'DM Sans'", "system-ui", "sans-serif"],
+        heading: ["'Outfit'", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        "card": "0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04)",
+        "card-hover": "0 4px 12px -2px rgb(0 0 0 / 0.06), 0 2px 6px -2px rgb(0 0 0 / 0.04)",
+        "modal": "0 20px 40px -12px rgb(0 0 0 / 0.15)",
       },
     },
   },

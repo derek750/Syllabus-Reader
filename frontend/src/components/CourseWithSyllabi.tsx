@@ -26,6 +26,7 @@ interface Assignment {
   extra_info?: string | null;
   location?: string | null;
   grade?: number | null;
+  archived?: boolean | null;
   created_at: string;
 }
 
@@ -276,7 +277,8 @@ export function CourseWithSyllabi({
       const created: Assignment[] = [];
       for (const a of extracted) {
         const worth = typeof a.worth === "number" && !Number.isNaN(a.worth) ? a.worth : 0;
-        const dueDate = a.due_date || new Date().toISOString().slice(0, 10);
+        const dueDateRaw = (a.due_date ?? "").toString().trim();
+        const dueDate = dueDateRaw.length >= 10 ? dueDateRaw.slice(0, 10) : null;
         const response = await fetch(`${API_BASE}/courses/${courseId}/assignments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -316,7 +318,7 @@ export function CourseWithSyllabi({
         <div className="space-y-2">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold">{courseName}</CardTitle>
+              <CardTitle className="text-lg font-semibold font-heading">{courseName}</CardTitle>
               <div className="flex gap-4 text-sm text-muted-foreground mt-1">
                 {courseCode && <span>{courseCode}</span>}
                 {instructor && <span>{instructor}</span>}
