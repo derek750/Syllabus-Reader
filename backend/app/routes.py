@@ -355,11 +355,6 @@ async def delete_syllabus_endpoint(syllabus_id: str):
 
 @router.post("/syllabi/{syllabus_id}/extract-assignments")
 async def extract_assignments_from_syllabus(syllabus_id: str):
-    """
-    Use Gemini to read a syllabus PDF and extract assignment information.
-
-    Returns a list of suggested assignments but does not create them in the database.
-    """
     try:
         syllabus = get_syllabus(syllabus_id)
         if not syllabus:

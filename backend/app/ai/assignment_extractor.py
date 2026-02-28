@@ -4,23 +4,12 @@ import os
 from typing import Any, Dict, List
 
 import PyPDF2
-import google as genai
-
+from google import genai
+from google.genai import types
 
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
 
-
-def _get_gemini_model():
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "GEMINI_API_KEY environment variable is not set. "
-            "Set it to a valid Gemini API key."
-        )
-
-    genai.Client(api_key=api_key)
-    return genai.Client(GEMINI_MODEL_NAME)
-
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 def _parse_json_response(raw: str) -> List[Dict[str, Any]]:
     """
@@ -69,8 +58,6 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
     if not text.strip():
         return []
 
-    model = _get_gemini_model()
-
     system_instructions = (
         "You are an assistant that reads university course syllabi and extracts "
         "all graded assignments (e.g., homework, projects, exams, quizzes, labs, "
@@ -97,11 +84,14 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
         "----------------------------------------\n"
     )
 
-    response = model.generate_content(
-        [
-            system_instructions,
-            user_prompt,
-        ]
+    response = client.models.generate_content(
+        model=GEMINI_MODEL_NAME,
+        contents=user_prompt,
+        config=types.GenerateContentConfig(
+            system_instruction=system_instructions,
+            response_mime_type="application/json",
+            seed=42,
+        ),
     )
 
     raw_text = response.text or ""

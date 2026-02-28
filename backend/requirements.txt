@@ -16,4 +16,4 @@ PyPDF2
 python-multipart
 
 # AI / Gemini
-google-generativeai
+google-genai
