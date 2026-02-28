@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { CourseWithSyllabi } from "@/components/CourseWithSyllabi";
 import { SyllabusUploadModal } from "@/components/SyllabusUploadModal";
+import { formatAssignmentDate, formatAssignmentTime } from "@/lib/utils";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -31,6 +32,7 @@ export interface Assignment {
   course_id: string;
   name: string;
   due_date: string;
+  due_time?: string | null;
   worth: number;
   extra_info?: string | null;
   location?: string | null;
@@ -49,7 +51,7 @@ const CHART_COLORS = [
 ];
 
 function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString(undefined, {
+  return formatAssignmentDate(dateString, {
     weekday: "short",
     year: "numeric",
     month: "short",
@@ -324,6 +326,7 @@ export function CourseDetailPage() {
                               </div>
                               <p className="text-sm text-muted-foreground mt-1">
                                 Due {formatDate(a.due_date)}
+                                {formatAssignmentTime(a.due_time) && ` at ${formatAssignmentTime(a.due_time)}`}
                               </p>
                             </button>
                           </li>
@@ -352,7 +355,7 @@ export function CourseDetailPage() {
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Due date
                           </p>
-                          <p>{formatDate(selectedAssignment.due_date)}</p>
+                          <p>{formatDate(selectedAssignment.due_date)}{formatAssignmentTime(selectedAssignment.due_time) ? ` at ${formatAssignmentTime(selectedAssignment.due_time)}` : ""}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { format, isToday, isFuture, addDays } from "date-fns";
+import { parseAssignmentDate } from "@/lib/utils";
 import { Plus, BookOpen, CalendarDays, GraduationCap, Trash2, ArrowRight } from "lucide-react";
 import { useStore } from "@/store";
 import { Button } from "@/components/Button";
@@ -98,7 +99,7 @@ export function IndexPage() {
   }, [loadCourses]);
 
   const upcomingEvents = events.filter((e) => {
-    const d = new Date(e.event_date);
+    const d = parseAssignmentDate(e.event_date);
     return isToday(d) || (isFuture(d) && d <= addDays(new Date(), 14));
   });
 

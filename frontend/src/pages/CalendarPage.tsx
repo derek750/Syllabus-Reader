@@ -23,6 +23,7 @@ function colorForId(id: string) {
   return COURSE_COLORS[h % COURSE_COLORS.length];
 }
 import { Button } from "@/components/Button";
+import { parseAssignmentDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
@@ -172,7 +173,7 @@ export function CalendarPage() {
 
   const dayEvents = (date: Date) =>
     calendarItems.filter((item) =>
-      isSameDay(new Date(item.event_date), date)
+      isSameDay(parseAssignmentDate(item.event_date), date)
     );
   const selectedEvents = selectedDate ? dayEvents(selectedDate) : [];
 

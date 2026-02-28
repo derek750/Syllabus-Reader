@@ -52,6 +52,7 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
     Returns a list of dictionaries with keys:
     - name: str
     - due_date: str (ISO date if possible, otherwise empty)
+    - due_time: str or None (HH:mm or HH:mm:ss if available)
     - worth: float or int percentage if available, otherwise null
     - extra_info: str
     - location: str (optional, e.g. room, building, or "online")
@@ -70,8 +71,10 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
         "From the following syllabus text, extract all graded assignments.\n\n"
         "For each assignment, include:\n"
         "- name: a short descriptive title\n"
-        "- due_date: the due date in ISO format YYYY-MM-DD if you can infer it, "
-        "otherwise an empty string\n"
+        "- due_date: the due date in ISO format YYYY-MM-DD do not infer, "
+        "if you cannot read it leave it an empty string\n"
+        "- due_time: the due time in HH:mm or HH:mm:ss (24-hour) if stated in the syllabus, "
+        "otherwise null; if it is a range use the start time (e.g. 9am–11am → 09:00)\n"
         "- worth: the percentage of the final grade as a number only (e.g. 15 for "
         "15%), or null if not specified\n"
         "- extra_info: any additional useful details (e.g., description, page "
@@ -109,6 +112,22 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
 
         due_date = str(item.get("due_date", "") or "").strip()
 
+        due_time_raw = item.get("due_time")
+        due_time: str | None = None
+        if due_time_raw is not None and str(due_time_raw).strip():
+            due_time_str = str(due_time_raw).strip()
+            # Normalize to HH:mm or HH:mm:ss (e.g. "9:00" -> "09:00", "09:00:00" ok)
+            if len(due_time_str) >= 4 and ":" in due_time_str:
+                parts = due_time_str.split(":")
+                try:
+                    h = int(parts[0].strip())
+                    m = int(parts[1].strip()) if len(parts) > 1 else 0
+                    s = int(parts[2].strip()) if len(parts) > 2 else 0
+                    if 0 <= h <= 23 and 0 <= m <= 59 and 0 <= s <= 59:
+                        due_time = f"{h:02d}:{m:02d}" if s == 0 else f"{h:02d}:{m:02d}:{s:02d}"
+                except (ValueError, IndexError):
+                    pass
+
         worth = item.get("worth")
         if isinstance(worth, str):
             worth_str = worth.strip().replace("%", "")
@@ -128,6 +147,7 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
             {
                 "name": name,
                 "due_date": due_date,
+                "due_time": due_time,
                 "worth": worth,
                 "extra_info": extra_info,
                 "location": location or None,

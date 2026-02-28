@@ -28,6 +28,7 @@ class UpdateCourseRequest(BaseModel):
 class CreateAssignmentRequest(BaseModel):
     name: str
     due_date: str
+    due_time: Optional[str] = None  # "HH:mm" or "HH:mm:ss"
     worth: float
     extra_info: Optional[str] = None
     location: Optional[str] = None
@@ -37,6 +38,7 @@ class CreateAssignmentRequest(BaseModel):
 class UpdateAssignmentRequest(BaseModel):
     name: Optional[str] = None
     due_date: Optional[str] = None
+    due_time: Optional[str] = None
     worth: Optional[float] = None
     extra_info: Optional[str] = None
     location: Optional[str] = None

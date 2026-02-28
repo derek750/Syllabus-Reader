@@ -1,6 +1,7 @@
 import { format, isPast, isToday } from "date-fns";
 import { Trash2, Upload } from "lucide-react";
 import type { Course, Event, GradeCategory, Grade } from "@/types";
+import { parseAssignmentDate } from "@/lib/utils";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 
@@ -34,7 +35,7 @@ export function CourseCard({
   const avg = getCourseAvg(course.id, categories, grades);
   const courseEvents = events.filter((e) => e.course_id === course.id);
   const nextEvent = courseEvents.find(
-    (e) => !isPast(new Date(e.event_date)) || isToday(new Date(e.event_date))
+    (e) => !isPast(parseAssignmentDate(e.event_date)) || isToday(parseAssignmentDate(e.event_date))
   );
 
   return (
@@ -90,7 +91,7 @@ export function CourseCard({
             <span className="mr-1">{typeIcon[nextEvent.type] ?? "📌"}</span>
             <span className="font-medium">{nextEvent.title}</span>
             <span className="text-muted-foreground ml-2">
-              {format(new Date(nextEvent.event_date), "MMM d")}
+              {format(parseAssignmentDate(nextEvent.event_date), "MMM d")}
             </span>
           </div>
         )}

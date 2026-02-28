@@ -3,6 +3,7 @@ import { Download, Trash2, Upload, FileText, Sparkles, Database } from "lucide-r
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { Input } from "@/components/Input";
+import { formatAssignmentDate, formatAssignmentTime } from "@/lib/utils";
 
 const API_BASE = "http://localhost:8000/api";
 
@@ -20,6 +21,7 @@ interface Assignment {
   course_id: string;
   name: string;
   due_date: string;
+  due_time?: string | null;
   worth: number;
   extra_info?: string | null;
   location?: string | null;
@@ -30,6 +32,7 @@ interface Assignment {
 interface ExtractedAssignment {
   name: string;
   due_date: string;
+  due_time?: string | null;
   worth: number | null;
   extra_info?: string | null;
   location?: string | null;
@@ -71,6 +74,7 @@ export function CourseWithSyllabi({
   const [assignmentsError, setAssignmentsError] = useState("");
   const [newAssignmentName, setNewAssignmentName] = useState("");
   const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
+  const [newAssignmentDueTime, setNewAssignmentDueTime] = useState("");
   const [newAssignmentWorth, setNewAssignmentWorth] = useState<string>("");
   const [newAssignmentExtraInfo, setNewAssignmentExtraInfo] = useState("");
   const [newAssignmentLocation, setNewAssignmentLocation] = useState("");
@@ -100,9 +104,6 @@ export function CourseWithSyllabi({
     return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + " " + sizes[i];
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
 
   const loadAssignments = async () => {
     if (assignmentsLoaded || assignmentsLoading) return;
@@ -161,6 +162,7 @@ export function CourseWithSyllabi({
         body: JSON.stringify({
           name: newAssignmentName.trim(),
           due_date: newAssignmentDueDate,
+          due_time: newAssignmentDueTime.trim() || null,
           worth: worthNumber,
           extra_info: newAssignmentExtraInfo.trim() || null,
           location: newAssignmentLocation.trim() || null,
@@ -176,6 +178,7 @@ export function CourseWithSyllabi({
       setAssignmentsVisible(true);
       setNewAssignmentName("");
       setNewAssignmentDueDate("");
+      setNewAssignmentDueTime("");
       setNewAssignmentWorth("");
       setNewAssignmentExtraInfo("");
       setNewAssignmentLocation("");
@@ -280,6 +283,7 @@ export function CourseWithSyllabi({
           body: JSON.stringify({
             name: a.name?.trim() || "Assignment",
             due_date: dueDate,
+            due_time: a.due_time?.trim() || null,
             worth,
             extra_info: a.extra_info?.trim() || null,
             location: a.location?.trim() || null,
@@ -372,7 +376,7 @@ export function CourseWithSyllabi({
                             {syllabus.page_count} page
                             {syllabus.page_count !== 1 ? "s" : ""} •{" "}
                             {formatFileSize(syllabus.file_size_bytes)} •{" "}
-                            {formatDate(syllabus.created_at)}
+                            {formatAssignmentDate(syllabus.created_at)}
                           </p>
                         </div>
                       </div>
@@ -456,7 +460,8 @@ export function CourseWithSyllabi({
                                 <div className="text-muted-foreground">
                                   {a.due_date && (
                                     <>
-                                      Due {formatDate(a.due_date)}{" "}
+                                      Due {formatAssignmentDate(a.due_date)}
+                                      {formatAssignmentTime(a.due_time) && ` at ${formatAssignmentTime(a.due_time)}`}{" "}
                                       <span className="mx-1">•</span>
                                     </>
                                   )}
@@ -509,7 +514,7 @@ export function CourseWithSyllabi({
                 <p className="text-xs font-medium text-muted-foreground">
                   Add a new assignment
                 </p>
-                <div className="grid gap-2 md:grid-cols-[2fr,1.2fr,0.8fr]">
+                <div className="grid gap-2 md:grid-cols-[2fr,1.2fr,0.7fr,0.8fr]">
                   <Input
                     placeholder="Assignment name"
                     value={newAssignmentName}
@@ -521,6 +526,13 @@ export function CourseWithSyllabi({
                     value={newAssignmentDueDate}
                     onChange={(e) => setNewAssignmentDueDate(e.target.value)}
                     disabled={savingAssignment}
+                  />
+                  <Input
+                    type="time"
+                    value={newAssignmentDueTime}
+                    onChange={(e) => setNewAssignmentDueTime(e.target.value)}
+                    disabled={savingAssignment}
+                    title="Due time (optional)"
                   />
                   <Input
                     type="number"
@@ -595,7 +607,8 @@ export function CourseWithSyllabi({
                           {assignment.name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Due {formatDate(assignment.due_date)} • Worth{" "}
+                          Due {formatAssignmentDate(assignment.due_date)}
+                          {formatAssignmentTime(assignment.due_time) && ` at ${formatAssignmentTime(assignment.due_time)}`} • Worth{" "}
                           {assignment.worth}
                           %
                           {assignment.grade != null

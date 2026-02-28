@@ -199,6 +199,7 @@ async def create_course_assignment(course_id: str, request: CreateAssignmentRequ
             course_id=course_id,
             name=request.name,
             due_date=request.due_date,
+            due_time=request.due_time,
             worth=request.worth,
             extra_info=request.extra_info,
             location=request.location,

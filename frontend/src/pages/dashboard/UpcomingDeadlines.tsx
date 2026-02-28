@@ -1,5 +1,6 @@
 import type { Event } from "@/types";
 import type { Course } from "@/types";
+import { parseAssignmentDate } from "@/lib/utils";
 
 interface UpcomingDeadlinesProps {
   events: Event[];
@@ -29,7 +30,7 @@ export function UpcomingDeadlines({ events, courses, format }: UpcomingDeadlines
               </div>
               <div className="text-right flex-shrink-0">
                 <p className="text-sm font-medium">
-                  {format(new Date(event.event_date), "MMM d")}
+                  {format(parseAssignmentDate(event.event_date), "MMM d")}
                 </p>
                 <p className="text-xs text-muted-foreground capitalize">{event.type}</p>
               </div>
