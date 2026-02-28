@@ -27,6 +27,7 @@ import { Button } from "@/components/Button";
 import { parseAssignmentDate } from "@/lib/utils";
 import { Card, CardContent } from "@/components/Card";
 import { Input } from "@/components/Input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,7 @@ export function CalendarPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [confirmDeleteItem, setConfirmDeleteItem] = useState<CalendarItem | null>(null);
   const [courseFilter, setCourseFilter] = useState<string>("");
   const [dayPopupDate, setDayPopupDate] = useState<Date | null>(null);
   const [updatingGradeId, setUpdatingGradeId] = useState<string | null>(null);
@@ -550,9 +552,7 @@ export function CalendarPage() {
                   variant="destructive"
                   size="sm"
                   className="gap-1"
-                  onClick={() => {
-                    if (confirm("Delete this item?")) deleteCalendarItem(detailItem);
-                  }}
+                  onClick={() => setConfirmDeleteItem(detailItem)}
                 >
                   <Trash2 className="h-4 w-4" />
                   Delete
@@ -565,6 +565,20 @@ export function CalendarPage() {
           </>
         )}
       </Modal>
+
+      <ConfirmDialog
+        open={confirmDeleteItem !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteItem(null)}
+        title="Delete item"
+        message="Are you sure you want to delete this item? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (confirmDeleteItem) {
+            deleteCalendarItem(confirmDeleteItem);
+            setDetailOpen(false);
+          }
+        }}
+      />
 
       {/* Add event modal */}
       <Modal open={addOpen} onOpenChange={setAddOpen}>

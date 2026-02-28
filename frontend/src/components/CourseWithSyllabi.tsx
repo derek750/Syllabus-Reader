@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Download, Trash2, Upload, FileText, Sparkles, Database } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Input } from "@/components/Input";
 import { formatAssignmentDate, formatAssignmentTime } from "@/lib/utils";
 
@@ -96,6 +97,7 @@ export function CourseWithSyllabi({
   const [expandedSyllabusId, setExpandedSyllabusId] = useState<string | null>(null);
   const [addingToDbSyllabusId, setAddingToDbSyllabusId] = useState<string | null>(null);
   const [addToDbError, setAddToDbError] = useState("");
+  const [assignmentToDeleteId, setAssignmentToDeleteId] = useState<string | null>(null);
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
@@ -217,7 +219,6 @@ export function CourseWithSyllabi({
   };
 
   const handleDeleteAssignment = async (assignmentId: string) => {
-    if (!confirm("Are you sure you want to delete this assignment?")) return;
     try {
       const response = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
         method: "DELETE",
@@ -313,7 +314,20 @@ export function CourseWithSyllabi({
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl border-border/80">
+    <>
+      <ConfirmDialog
+        open={assignmentToDeleteId !== null}
+        onOpenChange={(open) => !open && setAssignmentToDeleteId(null)}
+        title="Delete assignment"
+        message="Are you sure you want to delete this assignment? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (assignmentToDeleteId) {
+            await handleDeleteAssignment(assignmentToDeleteId);
+          }
+        }}
+      />
+      <Card className="overflow-hidden rounded-2xl border-border/80">
       <CardHeader className="pb-3">
         <div className="space-y-2">
           <div className="flex items-start justify-between">
@@ -660,7 +674,7 @@ export function CourseWithSyllabi({
                         <Button
                           size="icon"
                           variant="ghost"
-                          onClick={() => handleDeleteAssignment(assignment.id)}
+                          onClick={() => setAssignmentToDeleteId(assignment.id)}
                           title="Delete assignment"
                         >
                           <Trash2 className="w-4 h-4 text-red-500" />
@@ -675,5 +689,6 @@ export function CourseWithSyllabi({
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }

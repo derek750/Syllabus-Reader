@@ -6,6 +6,7 @@ import { Plus, BookOpen, CalendarDays, GraduationCap, Trash2 } from "lucide-reac
 import { useStore } from "@/store";
 import { Button } from "@/components/Button";
 import { Card, CardContent } from "@/components/Card";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CreateCourseModal } from "@/components/CreateCourseModal";
 import { Skeleton } from "@/components/Skeleton";
 import { DashboardStats } from "@/pages/dashboard/DashboardStats";
@@ -29,6 +30,7 @@ export function IndexPage() {
   const navigate = useNavigate();
   const { courses, addCourse, deleteCourse, setCourses } = useStore();
   const [addOpen, setAddOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [newCourseName, setNewCourseName] = useState("");
   const [newSemester, setNewSemester] = useState("");
   const [coursesLoading, setCoursesLoading] = useState(true);
@@ -196,19 +198,7 @@ export function IndexPage() {
                 key={course.id}
                 course={course}
                 assignments={assignments.filter((a) => a.course_id === course.id)}
-                onDelete={async () => {
-                  if (!confirm("Are you sure you want to delete this course?")) return;
-                  deleteCourse(course.id);
-                  try {
-                    const res = await fetch(`${API_BASE}/courses/${course.id}`, {
-                      method: "DELETE",
-                    });
-                    if (!res.ok) throw new Error("Failed to delete course");
-                    await loadCourses();
-                  } catch (err) {
-                    alert(err instanceof Error ? err.message : "Failed to delete course");
-                  }
-                }}
+                onDelete={() => setCourseToDelete(course)}
                 onClick={() => navigate(`/courses/${course.id}`)}
               />
             ))}
@@ -216,6 +206,26 @@ export function IndexPage() {
         )}
       </section>
 
+      <ConfirmDialog
+        open={!!courseToDelete}
+        onOpenChange={(open) => !open && setCourseToDelete(null)}
+        title="Delete course"
+        message="Are you sure you want to delete this course? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (!courseToDelete) return;
+          deleteCourse(courseToDelete.id);
+          try {
+            const res = await fetch(`${API_BASE}/courses/${courseToDelete.id}`, {
+              method: "DELETE",
+            });
+            if (!res.ok) throw new Error("Failed to delete course");
+            await loadCourses();
+          } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to delete course");
+          }
+        }}
+      />
       <CreateCourseModal
         open={addOpen}
         onOpenChange={setAddOpen}

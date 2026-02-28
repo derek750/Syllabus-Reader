@@ -6,6 +6,7 @@ import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { SyllabusUploadModal } from "@/components/SyllabusUploadModal";
 import { Input } from "@/components/Input";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { formatAssignmentDate, formatAssignmentTime } from "@/lib/utils";
 
@@ -98,6 +99,8 @@ export function CourseDetailPage() {
   const [acceptingExtractedKeys, setAcceptingExtractedKeys] = useState<Set<string>>(new Set());
   const [acceptAllLoading, setAcceptAllLoading] = useState(false);
   const [extractError, setExtractError] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<null | "course" | { syllabusId: string }>(null);
+  const [assignmentToDeleteId, setAssignmentToDeleteId] = useState<string | null>(null);
 
   const loadAssignments = useCallback(async () => {
     if (!courseId) return;
@@ -152,7 +155,6 @@ export function CourseDetailPage() {
 
   const handleDeleteCourse = async () => {
     if (!courseId) return;
-    if (!confirm("Are you sure you want to delete this course?")) return;
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/courses/${courseId}`, {
@@ -193,7 +195,6 @@ export function CourseDetailPage() {
   };
 
   const handleDeleteSyllabus = async (syllabusId: string) => {
-    if (!confirm("Are you sure you want to delete this syllabus?")) return;
     setLoading(true);
     try {
       const response = await fetch(`${API_BASE}/syllabi/${syllabusId}`, {
@@ -256,6 +257,21 @@ export function CourseDetailPage() {
     } catch {
       // surface via generic error banner
       setError("Failed to update assignment");
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) throw new Error("Failed to delete assignment");
+      setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+      if (selectedAssignment?.id === assignmentId) {
+        setSelectedAssignment(null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete assignment");
     }
   };
 
@@ -498,7 +514,7 @@ export function CourseDetailPage() {
             variant="ghost"
             size="sm"
             className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-            onClick={handleDeleteCourse}
+            onClick={() => setDeleteConfirm("course")}
             disabled={loading}
           >
             <Trash2 className="h-4 w-4 mr-1" />
@@ -682,7 +698,18 @@ export function CourseDetailPage() {
                 <div className="lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l bg-muted/20 shrink-0">
                   {selectedAssignment ? (
                     <div className="p-6 space-y-5 sticky top-4">
-                      <h4 className="font-semibold text-lg">Details</h4>
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-semibold text-lg">Details</h4>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => setAssignmentToDeleteId(selectedAssignment.id)}
+                          title="Delete assignment"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                       <div className="space-y-4">
                         <div>
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
@@ -802,6 +829,36 @@ export function CourseDetailPage() {
         )}
       </div>
 
+      <ConfirmDialog
+        open={deleteConfirm === "course"}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete course"
+        message="Are you sure you want to delete this course? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDeleteCourse}
+      />
+      <ConfirmDialog
+        open={assignmentToDeleteId !== null}
+        onOpenChange={(open) => !open && setAssignmentToDeleteId(null)}
+        title="Delete assignment"
+        message="Are you sure you want to delete this assignment? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={async () => {
+          if (assignmentToDeleteId) await handleDeleteAssignment(assignmentToDeleteId);
+        }}
+      />
+      <ConfirmDialog
+        open={deleteConfirm !== null && deleteConfirm !== "course" && "syllabusId" in deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+        title="Delete syllabus"
+        message="Are you sure you want to delete this syllabus?"
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (deleteConfirm !== null && deleteConfirm !== "course") {
+            handleDeleteSyllabus(deleteConfirm.syllabusId);
+          }
+        }}
+      />
       {courseId && (
         <SyllabusUploadModal
           open={uploadModalOpen}
