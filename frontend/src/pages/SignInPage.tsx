@@ -6,7 +6,7 @@ import { Button } from "@/components/Button";
 type GoogleCredentialResponse = { credential: string };
 type GoogleAccountsId = {
   initialize: (opts: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
-  renderButton: (el: HTMLElement, opts: { theme: string; size: string }) => void;
+  renderButton: (el: HTMLElement, opts: { theme: string; size: string; width?: number }) => void;
 };
 type GoogleIdentityServices = { accounts: { id: GoogleAccountsId } };
 
@@ -57,7 +57,8 @@ export function SignInPage() {
 
             const host = document.getElementById("google-signin");
             if (host) {
-              googleId.renderButton(host, { theme: "outline", size: "large" });
+              // Width 240–400px per Google's API; match card content width (max-w-md minus padding)
+              googleId.renderButton(host, { theme: "outline", size: "large", width: 400 });
             }
           }
         } catch (e) {
