@@ -149,7 +149,11 @@ export function SyllabusUploadModal({
           )}
         </div>
 
-        {error && <div className="text-sm text-red-500">{error}</div>}
+        {error && (
+          <div className="rounded-lg bg-destructive/10 text-destructive border border-destructive/20 px-3 py-2 text-sm">
+            {error}
+          </div>
+        )}
 
         <div className="flex gap-2 justify-end">
           <Button

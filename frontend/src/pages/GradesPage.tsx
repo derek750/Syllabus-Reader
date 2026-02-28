@@ -125,7 +125,7 @@ export function GradesPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Grade Tracker</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading">Grade Tracker</h1>
           <p className="text-muted-foreground mt-1">Track categories and grades by course</p>
         </div>
         <Select

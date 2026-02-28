@@ -16,6 +16,15 @@
   </head>
 
   <body>
+    <script>
+      (function() {
+        var t = localStorage.getItem('theme');
+        if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches))
+          document.documentElement.classList.add('dark');
+        else
+          document.documentElement.classList.remove('dark');
+      })();
+    </script>
     <div id="root"></div>
     <!-- Google Identity Services for One Tap / Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>

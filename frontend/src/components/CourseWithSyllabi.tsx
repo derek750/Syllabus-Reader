@@ -316,7 +316,7 @@ export function CourseWithSyllabi({
         <div className="space-y-2">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-lg font-semibold">{courseName}</CardTitle>
+              <CardTitle className="text-lg font-semibold font-heading">{courseName}</CardTitle>
               <div className="flex gap-4 text-sm text-muted-foreground mt-1">
                 {courseCode && <span>{courseCode}</span>}
                 {instructor && <span>{instructor}</span>}

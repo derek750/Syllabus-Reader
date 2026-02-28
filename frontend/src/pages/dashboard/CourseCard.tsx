@@ -47,7 +47,7 @@ export function CourseCard({
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
-            <CardTitle className="text-lg">{course.name}</CardTitle>
+            <CardTitle className="text-lg font-heading">{course.name}</CardTitle>
             {course.semester && (
               <p className="text-sm text-muted-foreground">{course.semester}</p>
             )}

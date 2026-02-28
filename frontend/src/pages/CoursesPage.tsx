@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Plus, BookOpen, FileText, ChevronRight } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card, CardContent } from "@/components/Card";
+import { Skeleton } from "@/components/Skeleton";
 import { CreateCourseModal } from "@/components/CreateCourseModal";
 
 interface Course {
@@ -90,6 +91,7 @@ export function CoursesPage() {
         ...courses,
         { ...data.course, syllabi: [] } as CourseWithSyllabi,
       ]);
+      setCreateModalOpen(false);
     } finally {
       setLoading(false);
     }
@@ -97,11 +99,10 @@ export function CoursesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <BookOpen className="w-8 h-8" />
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 font-heading">
+            <BookOpen className="w-8 h-8 text-primary" />
             Courses
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -118,26 +119,42 @@ export function CoursesPage() {
         </Button>
       </div>
 
-      {/* Error Message */}
       {error && (
-        <div className="bg-red-500/10 text-red-600 p-4 rounded-lg">
+        <div className="rounded-xl bg-destructive/10 text-destructive border border-destructive/20 px-4 py-3 text-sm">
           {error}
         </div>
       )}
 
-      {/* Courses List - clickable cards that expand to detail page */}
-      {courses.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-muted/30">
-          <BookOpen className="w-14 h-14 mx-auto text-muted-foreground mb-4 opacity-50" />
-          <p className="text-lg font-semibold mb-2">No courses yet</p>
-          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-            Create your first course to upload syllabi and track assignments.
-          </p>
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-2" size="lg">
-            <Plus className="w-4 h-4" />
-            Create Course
-          </Button>
+      {loading && courses.length === 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <Skeleton className="h-2 w-full" />
+              <CardContent className="p-5 space-y-3">
+                <Skeleton className="h-5 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="flex gap-2 pt-4 border-t border-border/80">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
+      ) : courses.length === 0 ? (
+        <Card className="border-dashed border-2">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <BookOpen className="w-14 h-14 mx-auto text-muted-foreground mb-4 opacity-50" />
+            <p className="text-lg font-semibold font-heading mb-2">No courses yet</p>
+            <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+              Create your first course to upload syllabi and track assignments.
+            </p>
+            <Button onClick={() => setCreateModalOpen(true)} className="gap-2" size="lg">
+              <Plus className="w-4 h-4" />
+              Create Course
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {courses.map((course) => (

@@ -40,13 +40,13 @@ export interface Assignment {
 }
 
 const CHART_COLORS = [
-  "hsl(262, 83%, 58%)",
-  "hsl(262, 70%, 65%)",
-  "hsl(262, 60%, 72%)",
-  "hsl(220, 70%, 55%)",
-  "hsl(180, 60%, 50%)",
-  "hsl(40, 80%, 55%)",
-  "hsl(0, 65%, 55%)",
+  "hsl(166, 76%, 38%)",
+  "hsl(166, 60%, 48%)",
+  "hsl(180, 55%, 45%)",
+  "hsl(200, 70%, 50%)",
+  "hsl(25, 95%, 53%)",
+  "hsl(0, 72%, 51%)",
+  "hsl(280, 60%, 55%)",
   "hsl(320, 60%, 55%)",
 ];
 
@@ -187,38 +187,45 @@ export function CourseDetailPage() {
 
   if (!courseId) {
     return (
-      <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-        Missing course ID
-      </div>
+      <Card className="border-dashed">
+        <CardContent className="py-12 text-center text-muted-foreground">
+          Missing course ID
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="icon"
             onClick={() => navigate("/courses")}
-            className="shrink-0 rounded-xl"
+            className="shrink-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <BookOpen className="h-5 w-5" />
-              </span>
-              {course?.course_name ?? "Course"}
-            </h1>
-            {course && (
-              <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0">
-                {course.course_code && <span>{course.course_code}</span>}
-                {course.instructor && <span>{course.instructor}</span>}
-                {course.semester && <span>{course.semester}</span>}
-              </p>
+            {loading && !course ? (
+              <div className="h-10 w-48 rounded-lg bg-muted animate-pulse" />
+            ) : (
+              <>
+                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 font-heading">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <BookOpen className="h-5 w-5" />
+                  </span>
+                  {course?.course_name ?? "Course"}
+                </h1>
+                {course && (
+                  <p className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0">
+                    {course.course_code && <span>{course.course_code}</span>}
+                    {course.instructor && <span>{course.instructor}</span>}
+                    {course.semester && <span>{course.semester}</span>}
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>

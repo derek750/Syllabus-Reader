@@ -11,7 +11,7 @@ interface UpcomingDeadlinesProps {
 export function UpcomingDeadlines({ events, courses, format }: UpcomingDeadlinesProps) {
   return (
     <section>
-      <h2 className="text-xl font-semibold mb-4">Upcoming Deadlines</h2>
+      <h2 className="text-xl font-semibold mb-4 font-heading">Upcoming Deadlines</h2>
       <div className="space-y-2">
         {events.slice(0, 8).map((event) => {
           const course = courses.find((c) => c.id === event.course_id);

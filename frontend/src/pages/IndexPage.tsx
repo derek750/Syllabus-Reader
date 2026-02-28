@@ -10,6 +10,7 @@ import { Input } from "@/components/Input";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { CreateCourseModal } from "@/components/CreateCourseModal";
 import { SyllabusUploadModal } from "@/components/SyllabusUploadModal";
+import { Skeleton } from "@/components/Skeleton";
 import { DashboardStats } from "@/pages/dashboard/DashboardStats";
 import { CourseCard } from "@/pages/dashboard/CourseCard";
 import { UpcomingDeadlines } from "@/pages/dashboard/UpcomingDeadlines";
@@ -61,17 +62,27 @@ export function IndexPage() {
   const [addOpen, setAddOpen] = useState(false);
   const [newCourseName, setNewCourseName] = useState("");
   const [newSemester, setNewSemester] = useState("");
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const loadCourses = useCallback(async () => {
     const userRaw = localStorage.getItem("user");
-    if (!userRaw) return;
+    if (!userRaw) {
+      setCoursesLoading(false);
+      return;
+    }
+    setCoursesLoading(true);
+    setLoadError("");
     try {
       const parsed = JSON.parse(userRaw);
       const userId = parsed?.id;
-      if (!userId) return;
+      if (!userId) {
+        setCoursesLoading(false);
+        return;
+      }
       const API_BASE = "http://localhost:8000/api";
       const res = await fetch(`${API_BASE}/courses?user_id=${userId}`);
-      if (!res.ok) return;
+      if (!res.ok) throw new Error("Failed to load courses");
       const data = await res.json();
       const rows = Array.isArray(data?.courses) ? data.courses : [];
       const normalized = rows.map((c: any) => {
@@ -91,6 +102,9 @@ export function IndexPage() {
       setCourses(normalized);
     } catch (err) {
       console.error("Failed to load courses", err);
+      setLoadError(err instanceof Error ? err.message : "Failed to load courses");
+    } finally {
+      setCoursesLoading(false);
     }
   }, [setCourses]);
 
@@ -122,14 +136,20 @@ export function IndexPage() {
     <div className="space-y-8">
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Your courses and upcoming deadlines</p>
         </div>
-        <Button className="gap-2 rounded-xl" size="lg" onClick={() => setAddOpen(true)}>
+        <Button className="gap-2" size="lg" onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" />
           Add Course
         </Button>
       </header>
+
+      {loadError && (
+        <div className="rounded-xl bg-destructive/10 text-destructive border border-destructive/20 px-4 py-3 text-sm">
+          {loadError}
+        </div>
+      )}
 
       <DashboardStats
         courseCount={courses.length}
@@ -164,12 +184,26 @@ export function IndexPage() {
       </Card>
 
       <section>
-        <h2 className="text-xl font-semibold mb-4">Your Courses</h2>
-        {courses.length === 0 ? (
-          <Card className="border-dashed">
+        <h2 className="text-xl font-semibold mb-4 font-heading">Your Courses</h2>
+        {coursesLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="overflow-hidden">
+                <Skeleton className="h-2 w-full" />
+                <CardContent className="p-6 space-y-3">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full mt-4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : courses.length === 0 ? (
+          <Card className="border-dashed border-2">
             <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-              <BookOpen className="h-10 w-10 mb-3" />
-              <p>No courses yet. Add one to get started!</p>
+              <BookOpen className="h-10 w-10 mb-3 opacity-60" />
+              <p className="font-medium">No courses yet</p>
+              <p className="text-sm mt-1">Add one to get started!</p>
             </CardContent>
           </Card>
         ) : (

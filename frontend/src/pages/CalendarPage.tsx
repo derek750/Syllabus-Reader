@@ -60,10 +60,10 @@ type CalendarItem =
 
 const EVENT_TYPES = ["exam", "assignment", "reading", "event"] as const;
 const TYPE_COLORS: Record<string, string> = {
-  exam: "bg-destructive/20 text-destructive border-destructive/30",
-  assignment: "bg-orange-100 text-orange-700 border-orange-200",
-  reading: "bg-green-100 text-green-700 border-green-200",
-  event: "bg-primary/10 text-primary border-primary/20",
+  exam: "bg-destructive/15 text-destructive border border-destructive/30",
+  assignment: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30",
+  reading: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30",
+  event: "bg-primary/10 text-primary border border-primary/20",
 };
 const TYPE_EMOJI: Record<string, string> = {
   exam: "🔴",
@@ -247,7 +247,7 @@ export function CalendarPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Calendar</h1>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading">Calendar</h1>
         <p className="text-muted-foreground mt-1">View and add events by date</p>
       </div>
 
