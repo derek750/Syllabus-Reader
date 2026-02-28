@@ -12,6 +12,16 @@ import {
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useStore } from "@/store";
+
+const COURSE_COLORS = [
+  "#6366f1", "#ec4899", "#f59e0b", "#10b981",
+  "#3b82f6", "#8b5cf6", "#ef4444", "#06b6d4",
+];
+function colorForId(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return COURSE_COLORS[h % COURSE_COLORS.length];
+}
 import { Button } from "@/components/Button";
 import { Card, CardContent } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -30,6 +40,7 @@ interface Assignment {
   worth: number;
   extra_info?: string | null;
   location?: string | null;
+  grade?: number | null;
   created_at: string;
 }
 
@@ -43,6 +54,7 @@ type CalendarItem =
       description: string | null;
       event_date: string;
       source: "assignment";
+      grade?: number | null;
     };
 
 const EVENT_TYPES = ["exam", "assignment", "reading", "event"] as const;
@@ -60,18 +72,49 @@ const TYPE_EMOJI: Record<string, string> = {
 };
 
 export function CalendarPage() {
-  const { courses, events, addEvent, deleteEvent } = useStore();
+  const { courses, setCourses, events, addEvent, deleteEvent } = useStore();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [assignmentsLoading, setAssignmentsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [updatingGradeId, setUpdatingGradeId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     type: "assignment",
     courseId: "",
     description: "",
   });
+
+  const loadCourses = useCallback(async () => {
+    try {
+      const userRaw = localStorage.getItem("user");
+      if (!userRaw) return;
+      const parsed = JSON.parse(userRaw);
+      const userId = parsed?.id;
+      if (!userId) return;
+      const res = await fetch(`${API_BASE}/courses?user_id=${userId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data?.courses) ? data.courses : [];
+      const normalized = rows.map((c: { id: string; course_name?: string; name?: string; semester?: string; color?: string; created_at?: string; updated_at?: string }) => ({
+        id: String(c.id ?? ""),
+        name: String(c.course_name ?? c.name ?? ""),
+        semester: c.semester ?? null,
+        color: String(c.color ?? colorForId(String(c.id))),
+        syllabus_path: null,
+        created_at: String(c.created_at ?? new Date().toISOString()),
+        updated_at: String(c.updated_at ?? c.created_at ?? new Date().toISOString()),
+      }));
+      setCourses(normalized);
+    } catch {
+      // ignore
+    }
+  }, [setCourses]);
+
+  useEffect(() => {
+    if (courses.length === 0) loadCourses();
+  }, [courses.length, loadCourses]);
 
   const loadAssignments = useCallback(async () => {
     if (courses.length === 0) {
@@ -110,6 +153,7 @@ export function CalendarPage() {
       title: a.name,
       description: [
         a.worth ? `Worth ${a.worth}%` : "",
+        a.grade != null ? `Grade: ${a.grade}` : "",
         a.location,
         a.extra_info,
       ]
@@ -117,6 +161,7 @@ export function CalendarPage() {
         .join(" • ") || null,
       event_date: a.due_date,
       source: "assignment" as const,
+      grade: a.grade,
     })),
   ];
 
@@ -151,6 +196,40 @@ export function CalendarPage() {
     [deleteEvent]
   );
 
+  const handleUpdateAssignmentGrade = useCallback(
+    async (assignmentId: string, gradeValue: string) => {
+      const grade = gradeValue.trim() === "" ? null : Number(gradeValue);
+      if (
+        gradeValue.trim() !== "" &&
+        (Number.isNaN(Number(gradeValue)) || grade == null)
+      )
+        return;
+      setUpdatingGradeId(assignmentId);
+      try {
+        const res = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ grade }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAssignments((prev) =>
+            prev.map((a) =>
+              a.id === assignmentId
+                ? { ...a, grade: data.assignment?.grade ?? grade }
+                : a
+            )
+          );
+        }
+      } catch {
+        // ignore
+      } finally {
+        setUpdatingGradeId(null);
+      }
+    },
+    []
+  );
+
   const handleAddEvent = () => {
     if (!selectedDate || !newEvent.courseId || !newEvent.title.trim()) return;
     addEvent({
@@ -165,10 +244,13 @@ export function CalendarPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Calendar</h1>
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Calendar</h1>
+        <p className="text-muted-foreground mt-1">View and add events by date</p>
+      </div>
 
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="p-4 md:p-6">
           <div className="flex items-center justify-between mb-6">
             <Button
@@ -285,6 +367,42 @@ export function CalendarPage() {
                         {item.description ? ` — ${item.description}` : ""}
                       </p>
                     </div>
+                    {item.source === "assignment" && (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          Grade
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          placeholder="—"
+                          value={item.grade ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || !Number.isNaN(Number(v))) {
+                              setAssignments((prev) =>
+                                prev.map((a) =>
+                                  a.id === item.id
+                                    ? {
+                                        ...a,
+                                        grade:
+                                          v === "" ? null : Number(v),
+                                      }
+                                    : a
+                                )
+                              );
+                            }
+                          }}
+                          onBlur={(e) =>
+                            handleUpdateAssignmentGrade(item.id, e.target.value)
+                          }
+                          disabled={updatingGradeId === item.id}
+                          className="w-16 h-8 text-sm text-right"
+                        />
+                      </div>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

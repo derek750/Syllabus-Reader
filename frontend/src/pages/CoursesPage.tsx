@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, BookOpen, FileText, ChevronRight } from "lucide-react";
 import { Button } from "@/components/Button";
+import { Card, CardContent } from "@/components/Card";
 import { CreateCourseModal } from "@/components/CreateCourseModal";
-import { SyllabusUploadModal } from "@/components/SyllabusUploadModal";
-import { CourseWithSyllabi } from "@/components/CourseWithSyllabi";
 
 interface Course {
   id: string;
@@ -38,9 +38,6 @@ export function CoursesPage() {
   const [error, setError] = useState("");
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedCourseName, setSelectedCourseName] = useState("");
 
   const userId = localStorage.getItem("user")
     ? JSON.parse(localStorage.getItem("user")!).id
@@ -98,85 +95,6 @@ export function CoursesPage() {
     }
   };
 
-  const handleUploadSyllabus = async (courseId: string, file: File) => {
-    setLoading(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch(
-        `${API_BASE}/courses/${courseId}/syllabus`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!response.ok) throw new Error("Failed to upload syllabus");
-
-      const data = await response.json();
-
-      setCourses(
-        courses.map((course) =>
-          course.id === courseId
-            ? {
-                ...course,
-                syllabi: [...course.syllabi, data.syllabus],
-              }
-            : course
-        )
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteCourse = async (courseId: string) => {
-    if (!confirm("Are you sure you want to delete this course?")) return;
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_BASE}/courses/${courseId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("Failed to delete course");
-
-      setCourses(courses.filter((c) => c.id !== courseId));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteSyllabus = async (syllabusId: string) => {
-    if (!confirm("Are you sure you want to delete this syllabus?")) return;
-
-    setLoading(true);
-
-    try {
-      const response = await fetch(`${API_BASE}/syllabi/${syllabusId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) throw new Error("Failed to delete syllabus");
-
-      setCourses(
-        courses.map((course) => ({
-          ...course,
-          syllabi: course.syllabi.filter((s) => s.id !== syllabusId),
-        }))
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDownloadSyllabus = (url: string) => {
-    window.open(url, "_blank");
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -207,62 +125,58 @@ export function CoursesPage() {
         </div>
       )}
 
-      {/* Courses List */}
+      {/* Courses List - clickable cards that expand to detail page */}
       {courses.length === 0 ? (
-        <div className="text-center py-12 bg-muted/50 rounded-lg">
-          <BookOpen className="w-12 h-12 mx-auto text-muted-foreground mb-3 opacity-50" />
-          <p className="text-lg font-medium mb-2">No courses yet</p>
-          <p className="text-muted-foreground mb-4">
-            Create your first course to get started
+        <div className="text-center py-16 rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-muted/30">
+          <BookOpen className="w-14 h-14 mx-auto text-muted-foreground mb-4 opacity-50" />
+          <p className="text-lg font-semibold mb-2">No courses yet</p>
+          <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
+            Create your first course to upload syllabi and track assignments.
           </p>
-          <Button onClick={() => setCreateModalOpen(true)} className="gap-2">
+          <Button onClick={() => setCreateModalOpen(true)} className="gap-2" size="lg">
             <Plus className="w-4 h-4" />
             Create Course
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {courses.map((course) => (
-            <CourseWithSyllabi
-              key={course.id}
-              courseId={course.id}
-              courseName={course.course_name}
-              courseCode={course.course_code}
-              instructor={course.instructor}
-              semester={course.semester}
-              syllabi={course.syllabi}
-              onUploadClick={() => {
-                setSelectedCourseId(course.id);
-                setSelectedCourseName(course.course_name);
-                setUploadModalOpen(true);
-              }}
-              onDeleteClick={() => handleDeleteCourse(course.id)}
-              onDownloadClick={handleDownloadSyllabus}
-              onDeleteSyllabusClick={handleDeleteSyllabus}
-              isLoading={loading}
-            />
+            <Link key={course.id} to={`/courses/${course.id}`} className="block group">
+              <Card className="h-full transition-all duration-200 hover:shadow-lg hover:border-primary/30 overflow-hidden">
+                <div className="h-1.5 bg-primary/80 group-hover:bg-primary" />
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-lg truncate group-hover:text-primary transition-colors">
+                        {course.course_name}
+                      </h3>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-sm text-muted-foreground">
+                        {course.course_code && <span>{course.course_code}</span>}
+                        {course.instructor && <span>{course.instructor}</span>}
+                        {course.semester && <span>{course.semester}</span>}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary shrink-0 transition-colors" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border/80">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {course.syllabi.length} syllabus{course.syllabi.length !== 1 ? "i" : ""}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       )}
 
-      {/* Modals */}
       <CreateCourseModal
         open={createModalOpen}
         onOpenChange={setCreateModalOpen}
         onSubmit={handleCreateCourse}
         isLoading={loading}
       />
-
-      {selectedCourseId && (
-        <SyllabusUploadModal
-          open={uploadModalOpen}
-          onOpenChange={setUploadModalOpen}
-          onSubmit={(file) => handleUploadSyllabus(selectedCourseId, file)}
-          isLoading={loading}
-          courseId={selectedCourseId}
-          courseName={selectedCourseName}
-        />
-      )}
     </div>
   );
 }

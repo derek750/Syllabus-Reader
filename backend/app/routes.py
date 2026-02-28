@@ -202,6 +202,7 @@ async def create_course_assignment(course_id: str, request: CreateAssignmentRequ
             worth=request.worth,
             extra_info=request.extra_info,
             location=request.location,
+            grade=request.grade,
         )
         return {"success": True, "assignment": assignment}
     except HTTPException:
