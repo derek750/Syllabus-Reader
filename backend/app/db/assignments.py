@@ -7,24 +7,27 @@ from .supabase_client import insert_row, read_rows, update_row, delete_row
 def create_assignment(
     course_id: str,
     name: str,
-    due_date: str,
-    worth: float,
+    due_date: Optional[str] = None,
+    worth: float = 0,
     extra_info: Optional[str] = None,
     location: Optional[str] = None,
     grade: Optional[float] = None,
     due_time: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Create a new assignment for a course."""
+    """Create a new assignment for a course. due_date may be None if unknown."""
     data = {
         "course_id": course_id,
         "name": name,
-        "due_date": due_date,
         "worth": worth,
         "extra_info": extra_info,
         "location": location,
         "grade": grade,
         "due_time": due_time,
     }
+    if due_date is not None and str(due_date).strip():
+        data["due_date"] = due_date.strip()
+    else:
+        data["due_date"] = None
     return insert_row("assignments", data)
 
 

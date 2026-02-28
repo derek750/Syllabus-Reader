@@ -276,7 +276,8 @@ export function CourseWithSyllabi({
       const created: Assignment[] = [];
       for (const a of extracted) {
         const worth = typeof a.worth === "number" && !Number.isNaN(a.worth) ? a.worth : 0;
-        const dueDate = a.due_date || new Date().toISOString().slice(0, 10);
+        const dueDateRaw = (a.due_date ?? "").toString().trim();
+        const dueDate = dueDateRaw.length >= 10 ? dueDateRaw.slice(0, 10) : null;
         const response = await fetch(`${API_BASE}/courses/${courseId}/assignments`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },

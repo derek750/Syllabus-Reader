@@ -64,6 +64,7 @@ def extract_assignments_from_text(text: str) -> List[Dict[str, Any]]:
         "You are an assistant that reads university course syllabi and extracts "
         "all graded assignments (e.g., homework, projects, exams, quizzes, labs, "
         "presentations, papers). "
+        "For all assignments that are reaccruing (e.g., weekly homework), extract each as a seperate entry if possible. "
         "You must respond ONLY with JSON, no explanations."
     )
 

@@ -10,7 +10,7 @@ import {
   subMonths,
   getDay,
 } from "date-fns";
-import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Calendar, BookOpen } from "lucide-react";
 import { useStore } from "@/store";
 
 const COURSE_COLORS = [
@@ -37,7 +37,7 @@ interface Assignment {
   id: string;
   course_id: string;
   name: string;
-  due_date: string;
+  due_date: string | null;
   worth: number;
   extra_info?: string | null;
   location?: string | null;
@@ -56,14 +56,15 @@ type CalendarItem =
       event_date: string;
       source: "assignment";
       grade?: number | null;
+      worth?: number;
     };
 
 const EVENT_TYPES = ["exam", "assignment", "reading", "event"] as const;
 const TYPE_COLORS: Record<string, string> = {
-  exam: "bg-destructive/15 text-destructive border border-destructive/30",
-  assignment: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30",
-  reading: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30",
-  event: "bg-primary/10 text-primary border border-primary/20",
+  exam: "bg-destructive/15 text-destructive border-l-destructive",
+  assignment: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-l-amber-500",
+  reading: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-l-emerald-500",
+  event: "bg-primary/10 text-primary border-l-primary",
 };
 const TYPE_EMOJI: Record<string, string> = {
   exam: "🔴",
@@ -72,6 +73,8 @@ const TYPE_EMOJI: Record<string, string> = {
   event: "🟣",
 };
 
+const MAX_VISIBLE_PER_DAY = 3;
+
 export function CalendarPage() {
   const { courses, setCourses, events, addEvent, deleteEvent } = useStore();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -79,6 +82,8 @@ export function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState<CalendarItem | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [updatingGradeId, setUpdatingGradeId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -163,8 +168,18 @@ export function CalendarPage() {
       event_date: a.due_date,
       source: "assignment" as const,
       grade: a.grade,
+      worth: a.worth,
     })),
   ];
+
+  const hasValidDate = (item: CalendarItem): boolean => {
+    const raw = item.event_date;
+    if (raw == null || String(raw).trim() === "") return false;
+    const d = parseAssignmentDate(item.event_date);
+    return !Number.isNaN(d.getTime());
+  };
+
+  const calendarItemsWithDate = calendarItems.filter(hasValidDate);
 
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
@@ -172,10 +187,9 @@ export function CalendarPage() {
   const startPad = getDay(monthStart);
 
   const dayEvents = (date: Date) =>
-    calendarItems.filter((item) =>
+    calendarItemsWithDate.filter((item) =>
       isSameDay(parseAssignmentDate(item.event_date), date)
     );
-  const selectedEvents = selectedDate ? dayEvents(selectedDate) : [];
 
   const deleteCalendarItem = useCallback(
     async (item: CalendarItem) => {
@@ -193,6 +207,8 @@ export function CalendarPage() {
           // ignore
         }
       }
+      setDetailOpen(false);
+      setDetailItem(null);
     },
     [deleteEvent]
   );
@@ -221,6 +237,11 @@ export function CalendarPage() {
                 : a
             )
           );
+          setDetailItem((prev) =>
+            prev && prev.source === "assignment" && prev.id === assignmentId
+              ? { ...prev, grade: data.assignment?.grade ?? grade }
+              : prev
+          );
         }
       } catch {
         // ignore
@@ -232,46 +253,70 @@ export function CalendarPage() {
   );
 
   const handleAddEvent = () => {
-    if (!selectedDate || !newEvent.courseId || !newEvent.title.trim()) return;
+    const date = selectedDate ?? new Date();
+    if (!newEvent.courseId || !newEvent.title.trim()) return;
     addEvent({
       course_id: newEvent.courseId,
       type: newEvent.type,
       title: newEvent.title.trim(),
       description: newEvent.description.trim() || null,
-      event_date: format(selectedDate, "yyyy-MM-dd"),
+      event_date: format(date, "yyyy-MM-dd"),
     });
     setAddOpen(false);
     setNewEvent({ title: "", type: "assignment", courseId: "", description: "" });
   };
 
+  const openDetail = (e: React.MouseEvent, item: CalendarItem) => {
+    e.stopPropagation();
+    setDetailItem(item);
+    setDetailOpen(true);
+  };
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading">Calendar</h1>
-        <p className="text-muted-foreground mt-1">View and add events by date</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight font-heading">Calendar</h1>
+          <p className="text-muted-foreground mt-1">Click an event to view details</p>
+        </div>
+        {courses.length > 0 && (
+          <Button
+            size="sm"
+            className="gap-1"
+            onClick={() => setAddOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Add Event
+          </Button>
+        )}
       </div>
 
       <Card className="overflow-hidden">
         <CardContent className="p-4 md:p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
+              aria-label="Previous month"
             >
               <ChevronLeft className="h-5 w-5" />
             </Button>
-            <h2 className="text-xl font-semibold">{format(currentMonth, "MMMM yyyy")}</h2>
+            <h2 className="text-xl font-semibold font-heading">
+              {format(currentMonth, "MMMM yyyy")}
+            </h2>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+              aria-label="Next month"
             >
               <ChevronRight className="h-5 w-5" />
             </Button>
           </div>
 
-          <div className="grid grid-cols-7 gap-1 mb-2">
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-px mb-1">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
               <div
                 key={d}
@@ -282,147 +327,173 @@ export function CalendarPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: startPad }).map((_, i) => <div key={`pad-${i}`} />)}
+          {/* Calendar grid: day cells with event blocks */}
+          <div className="grid grid-cols-7 gap-px bg-border/50 rounded-b-lg overflow-hidden">
+            {Array.from({ length: startPad }).map((_, i) => (
+              <div key={`pad-${i}`} className="min-h-[100px] bg-muted/30" />
+            ))}
             {days.map((day) => {
               const de = dayEvents(day);
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const isToday = isSameDay(day, new Date());
+              const visible = de.slice(0, MAX_VISIBLE_PER_DAY);
+              const moreCount = de.length - MAX_VISIBLE_PER_DAY;
+
               return (
-                <button
+                <div
                   key={day.toISOString()}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedDate(day)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedDate(day);
+                    }
+                  }}
                   className={cn(
-                    "relative aspect-square flex flex-col items-center justify-start p-1 rounded-lg transition-colors text-sm",
-                    isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : isToday
-                        ? "bg-accent"
-                        : "hover:bg-muted"
+                    "min-h-[100px] flex flex-col border-b border-r border-border/50 last:border-r-0 bg-card transition-colors",
+                    isSelected && "ring-2 ring-primary ring-inset",
+                    isToday && !isSelected && "bg-primary/5"
                   )}
                 >
-                  <span
+                  <div
                     className={cn(
-                      "font-medium",
-                      !isSameMonth(day, currentMonth) && "opacity-40"
+                      "flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium self-end mt-0.5 mr-0.5",
+                      isToday
+                        ? "bg-primary text-primary-foreground"
+                        : isSameMonth(day, currentMonth)
+                          ? "text-foreground"
+                          : "text-muted-foreground/60"
                     )}
                   >
                     {format(day, "d")}
-                  </span>
-                  {de.length > 0 && (
-                    <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center">
-                      {de.slice(0, 3).map((e) => {
-                        const course = courses.find((c) => c.id === e.course_id);
-                        return (
-                          <div
-                            key={e.id}
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ backgroundColor: course?.color ?? "#6366f1" }}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
-                </button>
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-0.5 p-1">
+                    {visible.map((item) => {
+                      const course = courses.find((c) => c.id === item.course_id);
+                      const color = course?.color ?? "#6366f1";
+                      return (
+                        <button
+                          key={item.source === "assignment" ? `a-${item.id}` : item.id}
+                          type="button"
+                          onClick={(e) => openDetail(e, item)}
+                          className={cn(
+                            "w-full text-left rounded border-l-2 py-1 px-1.5 text-xs font-medium truncate transition-opacity hover:opacity-90",
+                            TYPE_COLORS[item.type]
+                          )}
+                          style={{ borderLeftColor: color }}
+                          title={item.title}
+                        >
+                          <span className="truncate block">{item.title}</span>
+                        </button>
+                      );
+                    })}
+                    {moreCount > 0 && (
+                      <span className="text-[10px] text-muted-foreground px-1.5 py-0.5">
+                        +{moreCount} more
+                      </span>
+                    )}
+                  </div>
+                </div>
               );
             })}
           </div>
         </CardContent>
       </Card>
 
-      {selectedDate && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <h2 className="text-lg font-semibold">
-              {format(selectedDate, "EEEE, MMMM d, yyyy")}
-            </h2>
-            {courses.length > 0 && (
-              <Button size="sm" className="gap-1" onClick={() => setAddOpen(true)}>
-                <Plus className="h-4 w-4" />
-                Add Event
-              </Button>
-            )}
-          </div>
-          {selectedEvents.length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {assignmentsLoading ? "Loading assignments..." : "No events on this date."}
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {selectedEvents.map((item) => {
-                const course = courses.find((c) => c.id === item.course_id);
-                return (
-                  <div
-                    key={item.source === "assignment" ? `a-${item.id}` : item.id}
-                    className={cn(
-                      "flex items-center gap-4 rounded-lg border p-4",
-                      TYPE_COLORS[item.type]
-                    )}
-                  >
-                    <span>{TYPE_EMOJI[item.type]}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium">{item.title}</p>
-                      <p className="text-sm opacity-70">
-                        {course?.name}
-                        {item.description ? ` — ${item.description}` : ""}
-                      </p>
-                    </div>
-                    {item.source === "assignment" && (
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          Grade
-                        </span>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          step="0.1"
-                          placeholder="—"
-                          value={item.grade ?? ""}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (v === "" || !Number.isNaN(Number(v))) {
-                              setAssignments((prev) =>
-                                prev.map((a) =>
-                                  a.id === item.id
-                                    ? {
-                                        ...a,
-                                        grade:
-                                          v === "" ? null : Number(v),
-                                      }
-                                    : a
-                                )
-                              );
-                            }
-                          }}
-                          onBlur={(e) =>
-                            handleUpdateAssignmentGrade(item.id, e.target.value)
-                          }
-                          disabled={updatingGradeId === item.id}
-                          className="w-16 h-8 text-sm text-right"
-                        />
-                      </div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => deleteCalendarItem(item)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
+      {/* Event/Assignment detail popup */}
+      <Modal open={detailOpen} onOpenChange={setDetailOpen}>
+        {detailItem && (
+          <>
+            <ModalHeader>
+              <ModalTitle className="flex items-center gap-2">
+                <span>{TYPE_EMOJI[detailItem.type]}</span>
+                {detailItem.title}
+              </ModalTitle>
+            </ModalHeader>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <BookOpen className="h-4 w-4 shrink-0" />
+                <span>
+                  {courses.find((c) => c.id === detailItem.course_id)?.name ?? "Unknown course"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span>
+                  {format(parseAssignmentDate(detailItem.event_date), "EEEE, MMMM d, yyyy")}
+                </span>
+              </div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground capitalize">
+                {detailItem.type}
+              </p>
+              {detailItem.description && (
+                <p className="text-sm text-muted-foreground border-t border-border pt-3">
+                  {detailItem.description}
+                </p>
+              )}
+              {detailItem.source === "assignment" && "worth" in detailItem && detailItem.worth != null && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Worth </span>
+                  <span className="font-medium">{detailItem.worth}%</span>
+                </p>
+              )}
+              {detailItem.source === "assignment" && (
+                <div className="flex items-center gap-2 pt-2 border-t border-border">
+                  <label className="text-sm font-medium shrink-0">Grade</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    placeholder="—"
+                    value={detailItem.grade ?? ""}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || !Number.isNaN(Number(v))) {
+                        setDetailItem((prev) =>
+                          prev && prev.source === "assignment"
+                            ? { ...prev, grade: v === "" ? null : Number(v) }
+                            : prev
+                        );
+                      }
+                    }}
+                    onBlur={(e) =>
+                      handleUpdateAssignmentGrade(detailItem.id, e.target.value)
+                    }
+                    disabled={updatingGradeId === detailItem.id}
+                    className="w-20 h-9 text-sm text-right"
+                  />
+                </div>
+              )}
+              <div className="flex justify-end pt-4 gap-2">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => {
+                    if (confirm("Delete this item?")) deleteCalendarItem(detailItem);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setDetailOpen(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
-          )}
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
+      {/* Add event modal */}
       <Modal open={addOpen} onOpenChange={setAddOpen}>
         <ModalHeader>
-          <ModalTitle>Add event on {selectedDate ? format(selectedDate, "MMM d") : ""}</ModalTitle>
+          <ModalTitle>
+            Add event{selectedDate ? ` on ${format(selectedDate, "MMM d, yyyy")}` : ""}
+          </ModalTitle>
         </ModalHeader>
         <div className="space-y-4">
           <Input
