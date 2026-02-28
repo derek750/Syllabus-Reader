@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Trash2, Upload, FileText, Sparkles } from "lucide-react";
+import { Download, Trash2, Upload, FileText, Sparkles, Database } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -84,6 +84,8 @@ export function CourseWithSyllabi({
     Record<string, string>
   >({});
   const [expandedSyllabusId, setExpandedSyllabusId] = useState<string | null>(null);
+  const [addingToDbSyllabusId, setAddingToDbSyllabusId] = useState<string | null>(null);
+  const [addToDbError, setAddToDbError] = useState("");
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
@@ -231,6 +233,47 @@ export function CourseWithSyllabi({
     }
   };
 
+  const handleAddExtractedToDatabase = async (syllabusId: string) => {
+    const extracted = aiAssignmentsBySyllabus[syllabusId] || [];
+    if (extracted.length === 0 || !courseId) return;
+    setAddToDbError("");
+    setAddingToDbSyllabusId(syllabusId);
+    try {
+      const created: Assignment[] = [];
+      for (const a of extracted) {
+        const worth = typeof a.worth === "number" && !Number.isNaN(a.worth) ? a.worth : 0;
+        const dueDate = a.due_date || new Date().toISOString().slice(0, 10);
+        const response = await fetch(`${API_BASE}/courses/${courseId}/assignments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: a.name?.trim() || "Assignment",
+            due_date: dueDate,
+            worth,
+            extra_info: a.extra_info?.trim() || null,
+            location: a.location?.trim() || null,
+          }),
+        });
+        if (!response.ok) throw new Error("Failed to create an assignment");
+        const data = await response.json();
+        created.push(data.assignment);
+      }
+      setAssignments((prev) => [...prev, ...created]);
+      setAssignmentsLoaded(true);
+      setAssignmentsVisible(true);
+      setAiAssignmentsBySyllabus((prev) => ({
+        ...prev,
+        [syllabusId]: [],
+      }));
+    } catch (error) {
+      setAddToDbError(
+        error instanceof Error ? error.message : "Failed to add assignments to database"
+      );
+    } finally {
+      setAddingToDbSyllabusId(null);
+    }
+  };
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-3">
@@ -337,9 +380,28 @@ export function CourseWithSyllabi({
 
                     {expandedSyllabusId === syllabus.id && (
                       <div className="ml-7 rounded-lg border border-dashed p-3 bg-background/60 space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground">
-                          AI-generated assignments from this syllabus
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            AI-generated assignments from this syllabus
+                          </p>
+                          {aiAssignments.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="gap-1.5"
+                              onClick={() => handleAddExtractedToDatabase(syllabus.id)}
+                              disabled={addingToDbSyllabusId !== null}
+                            >
+                              <Database className="w-3.5 h-3.5" />
+                              {addingToDbSyllabusId === syllabus.id
+                                ? "Adding..."
+                                : "Add all to course"}
+                            </Button>
+                          )}
+                        </div>
+                        {addToDbError && (
+                          <div className="text-xs text-red-600">{addToDbError}</div>
+                        )}
                         {aiError ? (
                           <div className="text-xs text-red-600">{aiError}</div>
                         ) : isAiLoading ? (

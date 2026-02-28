@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   format,
   startOfMonth,
@@ -18,6 +18,32 @@ import { Input } from "@/components/Input";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { cn } from "@/lib/utils";
+import type { Event } from "@/types";
+
+const API_BASE = "http://localhost:8000/api";
+
+interface Assignment {
+  id: string;
+  course_id: string;
+  name: string;
+  due_date: string;
+  worth: number;
+  extra_info?: string | null;
+  location?: string | null;
+  created_at: string;
+}
+
+type CalendarItem =
+  | (Event & { source: "event" })
+  | {
+      id: string;
+      course_id: string;
+      type: string;
+      title: string;
+      description: string | null;
+      event_date: string;
+      source: "assignment";
+    };
 
 const EVENT_TYPES = ["exam", "assignment", "reading", "event"] as const;
 const TYPE_COLORS: Record<string, string> = {
@@ -35,6 +61,8 @@ const TYPE_EMOJI: Record<string, string> = {
 
 export function CalendarPage() {
   const { courses, events, addEvent, deleteEvent } = useStore();
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [assignmentsLoading, setAssignmentsLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -45,14 +73,83 @@ export function CalendarPage() {
     description: "",
   });
 
+  const loadAssignments = useCallback(async () => {
+    if (courses.length === 0) {
+      setAssignments([]);
+      setAssignmentsLoading(false);
+      return;
+    }
+    setAssignmentsLoading(true);
+    try {
+      const results = await Promise.all(
+        courses.map((c) =>
+          fetch(`${API_BASE}/courses/${c.id}/assignments`).then((r) =>
+            r.ok ? r.json() : { assignments: [] }
+          )
+        )
+      );
+      const all = results.flatMap((d) => d.assignments || []);
+      setAssignments(all);
+    } catch {
+      setAssignments([]);
+    } finally {
+      setAssignmentsLoading(false);
+    }
+  }, [courses]);
+
+  useEffect(() => {
+    loadAssignments();
+  }, [loadAssignments]);
+
+  const calendarItems: CalendarItem[] = [
+    ...events.map((e) => ({ ...e, source: "event" as const })),
+    ...assignments.map((a) => ({
+      id: a.id,
+      course_id: a.course_id,
+      type: "assignment",
+      title: a.name,
+      description: [
+        a.worth ? `Worth ${a.worth}%` : "",
+        a.location,
+        a.extra_info,
+      ]
+        .filter(Boolean)
+        .join(" • ") || null,
+      event_date: a.due_date,
+      source: "assignment" as const,
+    })),
+  ];
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(currentMonth);
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd });
   const startPad = getDay(monthStart);
 
   const dayEvents = (date: Date) =>
-    events.filter((e) => isSameDay(new Date(e.event_date), date));
+    calendarItems.filter((item) =>
+      isSameDay(new Date(item.event_date), date)
+    );
   const selectedEvents = selectedDate ? dayEvents(selectedDate) : [];
+
+  const deleteCalendarItem = useCallback(
+    async (item: CalendarItem) => {
+      if (item.source === "event") {
+        deleteEvent(item.id);
+      } else {
+        try {
+          const res = await fetch(`${API_BASE}/assignments/${item.id}`, {
+            method: "DELETE",
+          });
+          if (res.ok) {
+            setAssignments((prev) => prev.filter((a) => a.id !== item.id));
+          }
+        } catch {
+          // ignore
+        }
+      }
+    },
+    [deleteEvent]
+  );
 
   const handleAddEvent = () => {
     if (!selectedDate || !newEvent.courseId || !newEvent.title.trim()) return;
@@ -165,32 +262,34 @@ export function CalendarPage() {
             )}
           </div>
           {selectedEvents.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No events on this date.</p>
+            <p className="text-muted-foreground text-sm">
+              {assignmentsLoading ? "Loading assignments..." : "No events on this date."}
+            </p>
           ) : (
             <div className="space-y-2">
-              {selectedEvents.map((event) => {
-                const course = courses.find((c) => c.id === event.course_id);
+              {selectedEvents.map((item) => {
+                const course = courses.find((c) => c.id === item.course_id);
                 return (
                   <div
-                    key={event.id}
+                    key={item.source === "assignment" ? `a-${item.id}` : item.id}
                     className={cn(
                       "flex items-center gap-4 rounded-lg border p-4",
-                      TYPE_COLORS[event.type]
+                      TYPE_COLORS[item.type]
                     )}
                   >
-                    <span>{TYPE_EMOJI[event.type]}</span>
+                    <span>{TYPE_EMOJI[item.type]}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium">{event.title}</p>
+                      <p className="font-medium">{item.title}</p>
                       <p className="text-sm opacity-70">
                         {course?.name}
-                        {event.description ? ` — ${event.description}` : ""}
+                        {item.description ? ` — ${item.description}` : ""}
                       </p>
                     </div>
                     <Button
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8"
-                      onClick={() => deleteEvent(event.id)}
+                      onClick={() => deleteCalendarItem(item)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
