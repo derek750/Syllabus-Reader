@@ -36,9 +36,10 @@ from .datastructure import (
     CreateAssignmentRequest,
     UpdateAssignmentRequest,
     AgentRequest,
+    ExecutePlanRequest,
 )
 from .ai.assignment_extractor import extract_assignments_from_syllabus_pdf
-from .ai.agent import run_agent_async
+from .ai.agent import run_agent_async, execute_plan
 
 router = APIRouter(prefix="/api")
 
@@ -50,15 +51,31 @@ def health_check():
 
 @router.post("/agent")
 async def agent_chat(request: AgentRequest):
-    """Run the AI agent with the given prompt for the given user. Returns the agent's response."""
+    """Run the AI agent. Returns response text and optional pending_plan for user approval."""
     try:
         prompt = (request.prompt or "").strip()
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt is required")
         if not request.user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
-        response = await run_agent_async(prompt, request.user_id)
-        return {"success": True, "response": response}
+        out = await run_agent_async(prompt, request.user_id)
+        return {"success": True, "response": out["response"], "pending_plan": out.get("pending_plan")}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent/execute-plan")
+async def agent_execute_plan(request: ExecutePlanRequest):
+    """Execute an approved plan (create/update courses and assignments)."""
+    try:
+        if not request.user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+        if not request.plan:
+            raise HTTPException(status_code=400, detail="plan is required")
+        result = execute_plan(request.user_id, request.plan)
+        return result
     except HTTPException:
         raise
     except Exception as e:

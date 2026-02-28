@@ -69,6 +69,12 @@ export function CoursesPage() {
     }
   }, [userId, loadCourses]);
 
+  useEffect(() => {
+    const onPlanExecuted = () => userId && loadCourses();
+    window.addEventListener("agent-plan-executed", onPlanExecuted);
+    return () => window.removeEventListener("agent-plan-executed", onPlanExecuted);
+  }, [userId, loadCourses]);
+
   const handleCreateCourse = async (courseData: {
     course_name: string;
     course_code?: string;

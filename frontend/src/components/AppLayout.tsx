@@ -50,6 +50,19 @@ function GeminiLogo(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+interface PendingPlan {
+  summary: string;
+  actions: { type: string; params?: Record<string, unknown> }[];
+}
+
+interface AgentHistoryItem {
+  prompt: string;
+  response: string;
+  pending_plan?: PendingPlan | null;
+  plan_status?: "pending" | "approved" | "rejected";
+  execute_result?: { success: boolean; results?: unknown[]; error?: string };
+}
+
 interface AppLayoutProps {
   children: ReactNode;
 }
@@ -64,7 +77,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  const [aiHistory, setAiHistory] = useState<{ prompt: string; response: string }[]>([]);
+  const [aiHistory, setAiHistory] = useState<AgentHistoryItem[]>([]);
+  const [executingPlanIndex, setExecutingPlanIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (dark) {
@@ -117,13 +131,80 @@ export function AppLayout({ children }: AppLayoutProps) {
         return;
       }
       const responseText = data.response ?? "";
-      setAiHistory((prev) => [{ prompt: trimmed, response: responseText }, ...prev].slice(0, 50));
+      const pendingPlan = data.pending_plan ?? null;
+      setAiHistory((prev) => [
+        {
+          prompt: trimmed,
+          response: responseText,
+          pending_plan: pendingPlan,
+          plan_status: pendingPlan ? "pending" : undefined,
+        },
+        ...prev,
+      ].slice(0, 50));
       setAiPrompt("");
     } catch (e) {
       setAiError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setAiLoading(false);
     }
+  };
+
+  const handleApprovePlan = async (index: number, plan: PendingPlan) => {
+    let userId: string | null = null;
+    try {
+      const userRaw = localStorage.getItem("user");
+      userId = userRaw ? (JSON.parse(userRaw) as { id?: string }).id ?? null : null;
+    } catch {
+      userId = null;
+    }
+    if (!userId) {
+      setAiError("You must be signed in to approve changes.");
+      return;
+    }
+    setExecutingPlanIndex(index);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/agent/execute-plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, plan }),
+      });
+      const result = await res.json().catch(() => ({}));
+      setAiHistory((prev) =>
+        prev.map((item, i) =>
+          i === index
+            ? {
+                ...item,
+                plan_status: "approved" as const,
+                execute_result: result,
+                pending_plan: undefined,
+              }
+            : item
+        )
+      );
+      if (!res.ok) {
+        setAiError(result.detail ?? result.error ?? "Execute failed");
+      } else if (result.success) {
+        window.dispatchEvent(new CustomEvent("agent-plan-executed"));
+      }
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Something went wrong");
+      setAiHistory((prev) =>
+        prev.map((item, i) =>
+          i === index ? { ...item, plan_status: "approved" as const, execute_result: { success: false, error: String(e) } } : item
+        )
+      );
+    } finally {
+      setExecutingPlanIndex(null);
+    }
+  };
+
+  const handleDisapprovePlan = (index: number) => {
+    setAiHistory((prev) =>
+      prev.map((item, i) =>
+        i === index ? { ...item, plan_status: "rejected" as const, pending_plan: undefined } : item
+      )
+    );
   };
 
   return (
@@ -327,8 +408,12 @@ export function AppLayout({ children }: AppLayoutProps) {
           role="dialog"
           aria-modal="true"
           aria-label="AI Agent"
+          onClick={() => setAiAgentOpen(false)}
         >
-          <div className="w-full max-w-xl rounded-2xl border border-border/80 bg-card shadow-2xl shadow-black/40">
+          <div
+            className="w-full max-w-xl rounded-2xl border border-border/80 bg-card shadow-2xl shadow-black/40"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-border/80">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="h-9 w-9 rounded-xl overflow-hidden shadow-sm ring-1 ring-primary/40 bg-background">
@@ -339,7 +424,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     AI Agent
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Ask to create or edit courses and assignments. Responses appear below.
+                    Ask to create or edit courses and assignments. Approve or reject proposed changes below.
                   </p>
                 </div>
               </div>
@@ -379,7 +464,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               )}
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] text-muted-foreground">
-                  The agent can create and edit your courses and assignments.
+                  The agent will summarize changes for your approval before applying them.
                 </p>
                 <button
                   type="submit"
@@ -419,6 +504,44 @@ export function AppLayout({ children }: AppLayoutProps) {
                       >
                         <p className="font-medium text-foreground">You: {item.prompt}</p>
                         <p className="text-muted-foreground whitespace-pre-wrap">Agent: {item.response}</p>
+                        {item.pending_plan && item.plan_status === "pending" && (
+                          <div className="mt-2 pt-2 border-t border-border/60 space-y-2">
+                            <p className="font-medium text-foreground">Proposed changes:</p>
+                            <p className="text-muted-foreground">{item.pending_plan.summary}</p>
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleApprovePlan(index, item.pending_plan!)}
+                                disabled={executingPlanIndex === index}
+                                className="rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                              >
+                                {executingPlanIndex === index ? "Applying…" : "Approve"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDisapprovePlan(index)}
+                                disabled={executingPlanIndex !== null}
+                                className="rounded-lg border border-border bg-muted/60 px-2.5 py-1 text-xs font-medium hover:bg-muted disabled:opacity-60"
+                              >
+                                Disapprove
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {item.plan_status === "rejected" && (
+                          <p className="mt-1 text-muted-foreground italic">You declined the changes.</p>
+                        )}
+                        {item.plan_status === "approved" && item.execute_result && (
+                          <div className="mt-1">
+                            {item.execute_result.success ? (
+                              <p className="text-green-600 dark:text-green-400">Changes applied successfully.</p>
+                            ) : (
+                              <p className="text-destructive">
+                                {item.execute_result.error ?? "Some changes could not be applied."}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>

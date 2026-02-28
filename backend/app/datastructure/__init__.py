@@ -6,6 +6,7 @@ from .models import (
     CreateAssignmentRequest,
     UpdateAssignmentRequest,
     AgentRequest,
+    ExecutePlanRequest,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "CreateAssignmentRequest",
     "UpdateAssignmentRequest",
     "AgentRequest",
+    "ExecutePlanRequest",
 ]

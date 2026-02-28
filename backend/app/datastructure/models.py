@@ -52,6 +52,11 @@ class AgentRequest(BaseModel):
     user_id: str
 
 
+class ExecutePlanRequest(BaseModel):
+    user_id: str
+    plan: dict  # { "summary": str, "actions": [ { "type": str, "params": dict }, ... ] }
+
+
 __all__ = [
     "IDTokenRequest",
     "InsertRequest",
@@ -60,4 +65,5 @@ __all__ = [
     "CreateAssignmentRequest",
     "UpdateAssignmentRequest",
     "AgentRequest",
+    "ExecutePlanRequest",
 ]

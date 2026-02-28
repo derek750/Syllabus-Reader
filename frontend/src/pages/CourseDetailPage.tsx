@@ -144,6 +144,12 @@ export function CourseDetailPage() {
     if (courseId) loadAssignments();
   }, [courseId, loadAssignments]);
 
+  useEffect(() => {
+    const onPlanExecuted = () => courseId && loadAssignments();
+    window.addEventListener("agent-plan-executed", onPlanExecuted);
+    return () => window.removeEventListener("agent-plan-executed", onPlanExecuted);
+  }, [courseId, loadAssignments]);
+
   const handleDeleteCourse = async () => {
     if (!courseId) return;
     if (!confirm("Are you sure you want to delete this course?")) return;

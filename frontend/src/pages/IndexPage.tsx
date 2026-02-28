@@ -85,6 +85,12 @@ export function IndexPage() {
     loadCourses();
   }, [loadCourses]);
 
+  useEffect(() => {
+    const onPlanExecuted = () => loadCourses();
+    window.addEventListener("agent-plan-executed", onPlanExecuted);
+    return () => window.removeEventListener("agent-plan-executed", onPlanExecuted);
+  }, [loadCourses]);
+
   const loadAssignments = useCallback(async () => {
     if (courses.length === 0) {
       setAssignments([]);

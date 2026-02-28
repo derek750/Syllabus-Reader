@@ -126,6 +126,12 @@ export function CalendarPage() {
     if (courses.length === 0) loadCourses();
   }, [courses.length, loadCourses]);
 
+  useEffect(() => {
+    const onPlanExecuted = () => loadCourses();
+    window.addEventListener("agent-plan-executed", onPlanExecuted);
+    return () => window.removeEventListener("agent-plan-executed", onPlanExecuted);
+  }, [loadCourses]);
+
   const loadAssignments = useCallback(async () => {
     if (courses.length === 0) {
       setAssignments([]);
