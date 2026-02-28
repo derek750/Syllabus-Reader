@@ -10,6 +10,7 @@ def create_assignment(
     due_date: str,
     worth: float,
     extra_info: Optional[str] = None,
+    location: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Create a new assignment for a course."""
     data = {
@@ -18,6 +19,7 @@ def create_assignment(
         "due_date": due_date,
         "worth": worth,
         "extra_info": extra_info,
+        "location": location,
     }
     return insert_row("assignments", data)
 

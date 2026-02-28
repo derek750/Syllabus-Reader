@@ -84,4 +84,22 @@ def delete_syllabus_pdf(file_path: str) -> None:
         raise RuntimeError(f"Failed to delete PDF: {e}")
 
 
-__all__ = ["upload_syllabus_pdf", "get_syllabus_pdf_url", "delete_syllabus_pdf"]
+def download_syllabus_pdf(file_path: str) -> bytes:
+    """Download a syllabus PDF from Supabase Storage."""
+    _ensure_storage_client()
+    try:
+        data = _client.storage.from_("syllabus-storage").download(file_path)
+        # Some client versions return a Response-like object; others return raw bytes.
+        if hasattr(data, "read"):
+            return data.read()
+        return data
+    except Exception as e:
+        raise RuntimeError(f"Failed to download PDF: {e}")
+
+
+__all__ = [
+    "upload_syllabus_pdf",
+    "get_syllabus_pdf_url",
+    "delete_syllabus_pdf",
+    "download_syllabus_pdf",
+]

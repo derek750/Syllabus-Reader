@@ -22,7 +22,12 @@ from .db.assignments import (
     update_assignment as update_assignment_row,
     delete_assignment,
 )
-from .db.pdf_storage import upload_syllabus_pdf, get_syllabus_pdf_url, delete_syllabus_pdf
+from .db.pdf_storage import (
+    upload_syllabus_pdf,
+    get_syllabus_pdf_url,
+    delete_syllabus_pdf,
+    download_syllabus_pdf,
+)
 from .datastructure import (
     IDTokenRequest,
     InsertRequest,
@@ -31,6 +36,7 @@ from .datastructure import (
     CreateAssignmentRequest,
     UpdateAssignmentRequest,
 )
+from .ai.assignment_extractor import extract_assignments_from_syllabus_pdf
 router = APIRouter(prefix="/api")
 
 
@@ -195,6 +201,7 @@ async def create_course_assignment(course_id: str, request: CreateAssignmentRequ
             due_date=request.due_date,
             worth=request.worth,
             extra_info=request.extra_info,
+            location=request.location,
         )
         return {"success": True, "assignment": assignment}
     except HTTPException:
@@ -341,6 +348,26 @@ async def delete_syllabus_endpoint(syllabus_id: str):
         delete_syllabus(syllabus_id)
         
         return {"success": True, "message": "Syllabus deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/syllabi/{syllabus_id}/extract-assignments")
+async def extract_assignments_from_syllabus(syllabus_id: str):
+    try:
+        syllabus = get_syllabus(syllabus_id)
+        if not syllabus:
+            raise HTTPException(status_code=404, detail="Syllabus not found")
+
+        pdf_bytes = download_syllabus_pdf(syllabus["file_path"])
+        assignments = extract_assignments_from_syllabus_pdf(pdf_bytes)
+
+        return {
+            "success": True,
+            "assignments": assignments,
+        }
     except HTTPException:
         raise
     except Exception as e:

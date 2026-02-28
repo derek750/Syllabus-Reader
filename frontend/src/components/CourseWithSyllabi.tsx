@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Trash2, Upload, FileText } from "lucide-react";
+import { Download, Trash2, Upload, FileText, Sparkles, Database } from "lucide-react";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { Input } from "@/components/Input";
@@ -22,7 +22,16 @@ interface Assignment {
   due_date: string;
   worth: number;
   extra_info?: string | null;
+  location?: string | null;
   created_at: string;
+}
+
+interface ExtractedAssignment {
+  name: string;
+  due_date: string;
+  worth: number | null;
+  extra_info?: string | null;
+  location?: string | null;
 }
 
 interface CourseWithSyllabiProps {
@@ -61,8 +70,22 @@ export function CourseWithSyllabi({
   const [newAssignmentDueDate, setNewAssignmentDueDate] = useState("");
   const [newAssignmentWorth, setNewAssignmentWorth] = useState<string>("");
   const [newAssignmentExtraInfo, setNewAssignmentExtraInfo] = useState("");
+  const [newAssignmentLocation, setNewAssignmentLocation] = useState("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [saveAssignmentError, setSaveAssignmentError] = useState("");
+
+  const [aiAssignmentsBySyllabus, setAiAssignmentsBySyllabus] = useState<
+    Record<string, ExtractedAssignment[]>
+  >({});
+  const [aiAssignmentsLoadingId, setAiAssignmentsLoadingId] = useState<string | null>(
+    null
+  );
+  const [aiAssignmentsErrorBySyllabus, setAiAssignmentsErrorBySyllabus] = useState<
+    Record<string, string>
+  >({});
+  const [expandedSyllabusId, setExpandedSyllabusId] = useState<string | null>(null);
+  const [addingToDbSyllabusId, setAddingToDbSyllabusId] = useState<string | null>(null);
+  const [addToDbError, setAddToDbError] = useState("");
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return "0 B";
@@ -135,6 +158,7 @@ export function CourseWithSyllabi({
           due_date: newAssignmentDueDate,
           worth: worthNumber,
           extra_info: newAssignmentExtraInfo.trim() || null,
+          location: newAssignmentLocation.trim() || null,
         }),
       });
       if (!response.ok) {
@@ -148,6 +172,7 @@ export function CourseWithSyllabi({
       setNewAssignmentDueDate("");
       setNewAssignmentWorth("");
       setNewAssignmentExtraInfo("");
+      setNewAssignmentLocation("");
     } catch (error) {
       setSaveAssignmentError(
         error instanceof Error ? error.message : "Failed to create assignment"
@@ -171,6 +196,81 @@ export function CourseWithSyllabi({
       setAssignmentsError(
         error instanceof Error ? error.message : "Failed to delete assignment"
       );
+    }
+  };
+
+  const handleReadSyllabus = async (syllabusId: string) => {
+    if (!syllabusId) return;
+    setAiAssignmentsErrorBySyllabus((prev) => ({ ...prev, [syllabusId]: "" }));
+    setAiAssignmentsLoadingId(syllabusId);
+    try {
+      const response = await fetch(
+        `${API_BASE}/syllabi/${encodeURIComponent(syllabusId)}/extract-assignments`,
+        {
+          method: "POST",
+        }
+      );
+      if (!response.ok) {
+        throw new Error("Failed to read syllabus");
+      }
+      const data = await response.json();
+      const extracted: ExtractedAssignment[] = Array.isArray(data.assignments)
+        ? data.assignments
+        : [];
+      setAiAssignmentsBySyllabus((prev) => ({
+        ...prev,
+        [syllabusId]: extracted,
+      }));
+      setExpandedSyllabusId(syllabusId);
+    } catch (error) {
+      setAiAssignmentsErrorBySyllabus((prev) => ({
+        ...prev,
+        [syllabusId]:
+          error instanceof Error ? error.message : "Failed to read syllabus",
+      }));
+    } finally {
+      setAiAssignmentsLoadingId(null);
+    }
+  };
+
+  const handleAddExtractedToDatabase = async (syllabusId: string) => {
+    const extracted = aiAssignmentsBySyllabus[syllabusId] || [];
+    if (extracted.length === 0 || !courseId) return;
+    setAddToDbError("");
+    setAddingToDbSyllabusId(syllabusId);
+    try {
+      const created: Assignment[] = [];
+      for (const a of extracted) {
+        const worth = typeof a.worth === "number" && !Number.isNaN(a.worth) ? a.worth : 0;
+        const dueDate = a.due_date || new Date().toISOString().slice(0, 10);
+        const response = await fetch(`${API_BASE}/courses/${courseId}/assignments`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: a.name?.trim() || "Assignment",
+            due_date: dueDate,
+            worth,
+            extra_info: a.extra_info?.trim() || null,
+            location: a.location?.trim() || null,
+          }),
+        });
+        if (!response.ok) throw new Error("Failed to create an assignment");
+        const data = await response.json();
+        created.push(data.assignment);
+      }
+      setAssignments((prev) => [...prev, ...created]);
+      setAssignmentsLoaded(true);
+      setAssignmentsVisible(true);
+      setAiAssignmentsBySyllabus((prev) => ({
+        ...prev,
+        [syllabusId]: [],
+      }));
+    } catch (error) {
+      setAddToDbError(
+        error instanceof Error ? error.message : "Failed to add assignments to database"
+      );
+    } finally {
+      setAddingToDbSyllabusId(null);
     }
   };
 
@@ -221,49 +321,137 @@ export function CourseWithSyllabi({
               No syllabi uploaded yet
             </div>
           ) : (
-            <div className="space-y-2">
-              {syllabi.map((syllabus) => (
-                <div
-                  key={syllabus.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {syllabus.file_name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {syllabus.page_count} page
-                        {syllabus.page_count !== 1 ? "s" : ""} •{" "}
-                        {formatFileSize(syllabus.file_size_bytes)} •{" "}
-                        {formatDate(syllabus.created_at)}
-                      </p>
-                    </div>
-                  </div>
+            <div className="space-y-3">
+              {syllabi.map((syllabus) => {
+                const aiAssignments = aiAssignmentsBySyllabus[syllabus.id] || [];
+                const aiError = aiAssignmentsErrorBySyllabus[syllabus.id];
+                const isAiLoading = aiAssignmentsLoadingId === syllabus.id;
 
-                  <div className="flex gap-2 flex-shrink-0">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => onDownloadClick(syllabus.download_url)}
-                      disabled={isLoading}
-                      title="Download PDF"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => onDeleteSyllabusClick(syllabus.id)}
-                      disabled={isLoading}
-                      title="Delete syllabus"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-500" />
-                    </Button>
+                return (
+                  <div key={syllabus.id} className="space-y-2">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {syllabus.file_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {syllabus.page_count} page
+                            {syllabus.page_count !== 1 ? "s" : ""} •{" "}
+                            {formatFileSize(syllabus.file_size_bytes)} •{" "}
+                            {formatDate(syllabus.created_at)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1"
+                          onClick={() => handleReadSyllabus(syllabus.id)}
+                          disabled={isLoading || isAiLoading}
+                          title="Read syllabus and extract assignments"
+                        >
+                          <Sparkles className="w-4 h-4" />
+                          {isAiLoading ? "Reading..." : "Read"}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onDownloadClick(syllabus.download_url)}
+                          disabled={isLoading}
+                          title="Download PDF"
+                        >
+                          <Download className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => onDeleteSyllabusClick(syllabus.id)}
+                          disabled={isLoading}
+                          title="Delete syllabus"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {expandedSyllabusId === syllabus.id && (
+                      <div className="ml-7 rounded-lg border border-dashed p-3 bg-background/60 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            AI-generated assignments from this syllabus
+                          </p>
+                          {aiAssignments.length > 0 && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="gap-1.5"
+                              onClick={() => handleAddExtractedToDatabase(syllabus.id)}
+                              disabled={addingToDbSyllabusId !== null}
+                            >
+                              <Database className="w-3.5 h-3.5" />
+                              {addingToDbSyllabusId === syllabus.id
+                                ? "Adding..."
+                                : "Add all to course"}
+                            </Button>
+                          )}
+                        </div>
+                        {addToDbError && (
+                          <div className="text-xs text-red-600">{addToDbError}</div>
+                        )}
+                        {aiError ? (
+                          <div className="text-xs text-red-600">{aiError}</div>
+                        ) : isAiLoading ? (
+                          <div className="text-xs text-muted-foreground">
+                            Reading syllabus and extracting assignments...
+                          </div>
+                        ) : aiAssignments.length === 0 ? (
+                          <div className="text-xs text-muted-foreground">
+                            No assignments found yet. Click &quot;Read&quot; to analyze this
+                            syllabus.
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {aiAssignments.map((a, index) => (
+                              <div
+                                key={`${syllabus.id}-ai-${index}`}
+                                className="text-xs bg-muted/40 rounded-md px-2 py-1.5"
+                              >
+                                <div className="font-medium truncate">{a.name}</div>
+                                <div className="text-muted-foreground">
+                                  {a.due_date && (
+                                    <>
+                                      Due {formatDate(a.due_date)}{" "}
+                                      <span className="mx-1">•</span>
+                                    </>
+                                  )}
+                                  {typeof a.worth === "number" &&
+                                    !Number.isNaN(a.worth) && (
+                                      <>
+                                        Worth {a.worth}%{" "}
+                                        {(a.location || a.extra_info) && (
+                                          <span className="mx-1">•</span>
+                                        )}
+                                      </>
+                                    )}
+                                  {a.location}
+                                  {a.location && a.extra_info && (
+                                    <span className="mx-1">•</span>
+                                  )}
+                                  {a.extra_info}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -318,6 +506,12 @@ export function CourseWithSyllabi({
                   onChange={(e) => setNewAssignmentExtraInfo(e.target.value)}
                   disabled={savingAssignment}
                 />
+                <Input
+                  placeholder="Location (optional)"
+                  value={newAssignmentLocation}
+                  onChange={(e) => setNewAssignmentLocation(e.target.value)}
+                  disabled={savingAssignment}
+                />
                 <div className="flex items-center justify-between">
                   <Button
                     size="sm"
@@ -361,6 +555,9 @@ export function CourseWithSyllabi({
                           Due {formatDate(assignment.due_date)} • Worth{" "}
                           {assignment.worth}
                           %
+                          {assignment.location
+                            ? ` • ${assignment.location}`
+                            : ""}
                           {assignment.extra_info
                             ? ` • ${assignment.extra_info}`
                             : ""}
