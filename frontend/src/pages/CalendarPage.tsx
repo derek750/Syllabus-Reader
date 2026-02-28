@@ -40,6 +40,7 @@ interface Assignment {
   worth: number;
   extra_info?: string | null;
   location?: string | null;
+  grade?: number | null;
   created_at: string;
 }
 
@@ -53,6 +54,7 @@ type CalendarItem =
       description: string | null;
       event_date: string;
       source: "assignment";
+      grade?: number | null;
     };
 
 const EVENT_TYPES = ["exam", "assignment", "reading", "event"] as const;
@@ -76,6 +78,7 @@ export function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [updatingGradeId, setUpdatingGradeId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({
     title: "",
     type: "assignment",
@@ -150,6 +153,7 @@ export function CalendarPage() {
       title: a.name,
       description: [
         a.worth ? `Worth ${a.worth}%` : "",
+        a.grade != null ? `Grade: ${a.grade}` : "",
         a.location,
         a.extra_info,
       ]
@@ -157,6 +161,7 @@ export function CalendarPage() {
         .join(" • ") || null,
       event_date: a.due_date,
       source: "assignment" as const,
+      grade: a.grade,
     })),
   ];
 
@@ -189,6 +194,40 @@ export function CalendarPage() {
       }
     },
     [deleteEvent]
+  );
+
+  const handleUpdateAssignmentGrade = useCallback(
+    async (assignmentId: string, gradeValue: string) => {
+      const grade = gradeValue.trim() === "" ? null : Number(gradeValue);
+      if (
+        gradeValue.trim() !== "" &&
+        (Number.isNaN(Number(gradeValue)) || grade == null)
+      )
+        return;
+      setUpdatingGradeId(assignmentId);
+      try {
+        const res = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ grade }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAssignments((prev) =>
+            prev.map((a) =>
+              a.id === assignmentId
+                ? { ...a, grade: data.assignment?.grade ?? grade }
+                : a
+            )
+          );
+        }
+      } catch {
+        // ignore
+      } finally {
+        setUpdatingGradeId(null);
+      }
+    },
+    []
   );
 
   const handleAddEvent = () => {
@@ -328,6 +367,42 @@ export function CalendarPage() {
                         {item.description ? ` — ${item.description}` : ""}
                       </p>
                     </div>
+                    {item.source === "assignment" && (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          Grade
+                        </span>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          placeholder="—"
+                          value={item.grade ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (v === "" || !Number.isNaN(Number(v))) {
+                              setAssignments((prev) =>
+                                prev.map((a) =>
+                                  a.id === item.id
+                                    ? {
+                                        ...a,
+                                        grade:
+                                          v === "" ? null : Number(v),
+                                      }
+                                    : a
+                                )
+                              );
+                            }
+                          }}
+                          onBlur={(e) =>
+                            handleUpdateAssignmentGrade(item.id, e.target.value)
+                          }
+                          disabled={updatingGradeId === item.id}
+                          className="w-16 h-8 text-sm text-right"
+                        />
+                      </div>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

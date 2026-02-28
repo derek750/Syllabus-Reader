@@ -23,6 +23,7 @@ interface Assignment {
   worth: number;
   extra_info?: string | null;
   location?: string | null;
+  grade?: number | null;
   created_at: string;
 }
 
@@ -73,8 +74,10 @@ export function CourseWithSyllabi({
   const [newAssignmentWorth, setNewAssignmentWorth] = useState<string>("");
   const [newAssignmentExtraInfo, setNewAssignmentExtraInfo] = useState("");
   const [newAssignmentLocation, setNewAssignmentLocation] = useState("");
+  const [newAssignmentGrade, setNewAssignmentGrade] = useState<string>("");
   const [savingAssignment, setSavingAssignment] = useState(false);
   const [saveAssignmentError, setSaveAssignmentError] = useState("");
+  const [updatingGradeId, setUpdatingGradeId] = useState<string | null>(null);
 
   const [aiAssignmentsBySyllabus, setAiAssignmentsBySyllabus] = useState<
     Record<string, ExtractedAssignment[]>
@@ -161,6 +164,7 @@ export function CourseWithSyllabi({
           worth: worthNumber,
           extra_info: newAssignmentExtraInfo.trim() || null,
           location: newAssignmentLocation.trim() || null,
+          grade: newAssignmentGrade.trim() ? Number(newAssignmentGrade) : null,
         }),
       });
       if (!response.ok) {
@@ -175,6 +179,7 @@ export function CourseWithSyllabi({
       setNewAssignmentWorth("");
       setNewAssignmentExtraInfo("");
       setNewAssignmentLocation("");
+      setNewAssignmentGrade("");
       onAssignmentsRefreshed?.();
     } catch (error) {
       setSaveAssignmentError(
@@ -182,6 +187,28 @@ export function CourseWithSyllabi({
       );
     } finally {
       setSavingAssignment(false);
+    }
+  };
+
+  const handleUpdateGrade = async (assignmentId: string, gradeValue: string) => {
+    const grade = gradeValue.trim() === "" ? null : Number(gradeValue);
+    if (gradeValue.trim() !== "" && (Number.isNaN(grade) || grade == null)) return;
+    setUpdatingGradeId(assignmentId);
+    try {
+      const response = await fetch(`${API_BASE}/assignments/${assignmentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ grade }),
+      });
+      if (!response.ok) throw new Error("Failed to update grade");
+      const data = await response.json();
+      setAssignments((prev) =>
+        prev.map((a) => (a.id === assignmentId ? { ...a, grade: data.assignment?.grade ?? grade } : a))
+      );
+    } catch {
+      // ignore
+    } finally {
+      setUpdatingGradeId(null);
     }
   };
 
@@ -517,6 +544,17 @@ export function CourseWithSyllabi({
                   onChange={(e) => setNewAssignmentLocation(e.target.value)}
                   disabled={savingAssignment}
                 />
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  placeholder="Grade (optional)"
+                  value={newAssignmentGrade}
+                  onChange={(e) => setNewAssignmentGrade(e.target.value)}
+                  disabled={savingAssignment}
+                  className="max-w-[120px]"
+                />
                 <div className="flex items-center justify-between">
                   <Button
                     size="sm"
@@ -550,9 +588,9 @@ export function CourseWithSyllabi({
                   {assignments.map((assignment) => (
                     <div
                       key={assignment.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                      className="flex items-center justify-between gap-3 p-3 rounded-lg bg-muted/50"
                     >
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">
                           {assignment.name}
                         </p>
@@ -560,6 +598,9 @@ export function CourseWithSyllabi({
                           Due {formatDate(assignment.due_date)} • Worth{" "}
                           {assignment.worth}
                           %
+                          {assignment.grade != null
+                            ? ` • Grade: ${assignment.grade}`
+                            : ""}
                           {assignment.location
                             ? ` • ${assignment.location}`
                             : ""}
@@ -568,14 +609,48 @@ export function CourseWithSyllabi({
                             : ""}
                         </p>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDeleteAssignment(assignment.id)}
-                        title="Delete assignment"
-                      >
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                      </Button>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          placeholder="Grade"
+                          value={assignment.grade ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const num = v === "" ? null : Number(v);
+                            setAssignments((prev) =>
+                              prev.map((a) =>
+                                a.id === assignment.id
+                                  ? {
+                                      ...a,
+                                      grade:
+                                        v === ""
+                                          ? null
+                                          : Number.isNaN(Number(v))
+                                            ? a.grade
+                                            : Number(v),
+                                    }
+                                  : a
+                              )
+                            );
+                          }}
+                          onBlur={(e) =>
+                            handleUpdateGrade(assignment.id, e.target.value)
+                          }
+                          disabled={updatingGradeId === assignment.id}
+                          className="w-16 h-8 text-sm text-right"
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          onClick={() => handleDeleteAssignment(assignment.id)}
+                          title="Delete assignment"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
