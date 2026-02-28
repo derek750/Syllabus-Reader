@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { DashboardStats } from "@/pages/dashboard/DashboardStats";
 import { CourseCard } from "@/pages/dashboard/CourseCard";
 import { UpcomingDeadlines } from "@/pages/dashboard/UpcomingDeadlines";
+import type { Course } from "@/types";
 
 const EVENT_TYPE_ICON: Record<string, string> = {
   exam: "🔴",
@@ -84,17 +85,18 @@ export function IndexPage() {
       const res = await fetch(`${API_BASE}/courses?user_id=${userId}`);
       if (!res.ok) throw new Error("Failed to load courses");
       const data = await res.json();
-      const rows = Array.isArray(data?.courses) ? data.courses : [];
-      const normalized = rows.map((c: any) => {
+      const rows: unknown[] = Array.isArray(data?.courses) ? (data.courses as unknown[]) : [];
+      const normalized: Course[] = rows.map((row) => {
+        const c = (row ?? {}) as Record<string, unknown>;
         const id = String(c.id ?? "");
         const createdAt = String(c.created_at ?? new Date().toISOString());
         const updatedAt = String(c.updated_at ?? createdAt);
         return {
           id,
           name: String(c.course_name ?? c.name ?? ""),
-          semester: c.semester ?? null,
+          semester: c.semester == null ? null : String(c.semester),
           color: String(c.color ?? colorForId(id)),
-          syllabus_path: c.syllabus_path ?? null,
+          syllabus_path: c.syllabus_path == null ? null : String(c.syllabus_path),
           created_at: createdAt,
           updated_at: updatedAt,
         };
@@ -234,7 +236,7 @@ export function IndexPage() {
                 }}
                 onUpload={() => {
                   setSelectedCourseId(course.id);
-                  setSelectedCourseName((course as any).name ?? "");
+                  setSelectedCourseName(course.name);
                   setUploadModalOpen(true);
                 }}
                 onClick={() => navigate(`/courses/${course.id}`)}

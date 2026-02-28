@@ -3,6 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { BookOpen } from "lucide-react";
 import { Button } from "@/components/Button";
 
+type GoogleCredentialResponse = { credential: string };
+type GoogleAccountsId = {
+  initialize: (opts: { client_id: string; callback: (response: GoogleCredentialResponse) => void }) => void;
+  renderButton: (el: HTMLElement, opts: { theme: string; size: string }) => void;
+};
+type GoogleIdentityServices = { accounts: { id: GoogleAccountsId } };
+
+declare global {
+  interface Window {
+    google?: GoogleIdentityServices;
+  }
+}
+
 export function SignInPage() {
   const navigate = useNavigate();
 
@@ -19,12 +32,11 @@ export function SignInPage() {
           const cfg = cfgRes.ok ? await cfgRes.json() : { client_id: "" };
           const clientId = cfg.client_id || "";
 
-          // @ts-ignore - global provided by Google Identity Services
-          if (window.google && window.google.accounts && window.google.accounts.id) {
-            // @ts-ignore
-            window.google.accounts.id.initialize({
+          const googleId = window.google?.accounts?.id;
+          if (googleId) {
+            googleId.initialize({
               client_id: clientId,
-              callback: async (response: any) => {
+              callback: async (response: GoogleCredentialResponse) => {
                 const idToken = response.credential;
                 try {
                   const res = await fetch("/api/auth/google", {
@@ -43,11 +55,10 @@ export function SignInPage() {
               },
             });
 
-            // @ts-ignore
-            window.google.accounts.id.renderButton(document.getElementById("google-signin")!, {
-              theme: "outline",
-              size: "large",
-            });
+            const host = document.getElementById("google-signin");
+            if (host) {
+              googleId.renderButton(host, { theme: "outline", size: "large" });
+            }
           }
         } catch (e) {
           /* ignore */

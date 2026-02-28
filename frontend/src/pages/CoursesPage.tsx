@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Plus, BookOpen, FileText, ChevronRight } from "lucide-react";
 import { Button } from "@/components/Button";
@@ -44,13 +44,7 @@ export function CoursesPage() {
     ? JSON.parse(localStorage.getItem("user")!).id
     : null;
 
-  useEffect(() => {
-    if (userId) {
-      loadCourses();
-    }
-  }, [userId]);
-
-  const loadCourses = async () => {
+  const loadCourses = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     setError("");
@@ -60,14 +54,21 @@ export function CoursesPage() {
       if (!response.ok) throw new Error("Failed to load courses");
 
       const data = await response.json();
-      const rows = (data.courses || []).map((c: any) => ({ ...c, syllabi: c.syllabi || [] }));
+      const raw = Array.isArray(data.courses) ? (data.courses as CourseWithSyllabi[]) : [];
+      const rows = raw.map((c) => ({ ...c, syllabi: c.syllabi || [] }));
       setCourses(rows);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load courses");
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (userId) {
+      loadCourses();
+    }
+  }, [userId, loadCourses]);
 
   const handleCreateCourse = async (courseData: {
     course_name: string;
