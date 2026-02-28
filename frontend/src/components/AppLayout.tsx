@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, LayoutDashboard, CalendarDays, LogOut, Moon, Sun, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
+import { API_BASE } from "@/config";
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -120,7 +121,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     setAiError(null);
     setAiLoading(true);
     try {
-      const res = await fetch("/api/agent", {
+      const res = await fetch(`${API_BASE}/agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: trimmed, user_id: userId }),
@@ -164,7 +165,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     setExecutingPlanIndex(index);
     setAiError(null);
     try {
-      const res = await fetch("/api/agent/execute-plan", {
+      const res = await fetch(`${API_BASE}/agent/execute-plan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, plan }),
