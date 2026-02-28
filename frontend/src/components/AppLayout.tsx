@@ -62,7 +62,9 @@ export function AppLayout({ children }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [aiAgentOpen, setAiAgentOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
-  const [aiHistory, setAiHistory] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiHistory, setAiHistory] = useState<{ prompt: string; response: string }[]>([]);
 
   useEffect(() => {
     if (dark) {
@@ -87,11 +89,41 @@ export function AppLayout({ children }: AppLayoutProps) {
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
-  const handleAddPrompt = (value: string) => {
+  const handleAgentSubmit = async (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
-    setAiHistory((prev) => [trimmed, ...prev].slice(0, 50));
-    setAiPrompt("");
+    let userId: string | null = null;
+    try {
+      const userRaw = localStorage.getItem("user");
+      userId = userRaw ? (JSON.parse(userRaw) as { id?: string }).id ?? null : null;
+    } catch {
+      userId = null;
+    }
+    if (!userId) {
+      setAiError("You must be signed in to use the AI agent.");
+      return;
+    }
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: trimmed, user_id: userId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAiError(data.detail ?? `Request failed (${res.status})`);
+        return;
+      }
+      const responseText = data.response ?? "";
+      setAiHistory((prev) => [{ prompt: trimmed, response: responseText }, ...prev].slice(0, 50));
+      setAiPrompt("");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -307,7 +339,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                     AI Agent
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Save prompts you&apos;ve used with Gemini. No responses are shown here.
+                    Ask to create or edit courses and assignments. Responses appear below.
                   </p>
                 </div>
               </div>
@@ -323,7 +355,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               className="px-5 pt-4 pb-3 space-y-3"
               onSubmit={(e) => {
                 e.preventDefault();
-                handleAddPrompt(aiPrompt);
+                handleAgentSubmit(aiPrompt);
               }}
             >
               <label className="block text-xs font-medium text-muted-foreground mb-1">
@@ -331,21 +363,30 @@ export function AppLayout({ children }: AppLayoutProps) {
               </label>
               <textarea
                 value={aiPrompt}
-                onChange={(e) => setAiPrompt(e.target.value)}
+                onChange={(e) => {
+                  setAiPrompt(e.target.value);
+                  setAiError(null);
+                }}
                 rows={3}
                 className="w-full resize-none rounded-xl border border-border/80 bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-                placeholder="Type a prompt you want to remember. Gemini will not respond here."
+                placeholder="e.g. Create a course called Math 101 and add an assignment due next week worth 10%"
+                disabled={aiLoading}
               />
+              {aiError && (
+                <p className="text-xs text-destructive" role="alert">
+                  {aiError}
+                </p>
+              )}
               <div className="flex items-center justify-between gap-3">
                 <p className="text-[11px] text-muted-foreground">
-                  Prompts are stored only for this session and are never sent from this page.
+                  The agent can create and edit your courses and assignments.
                 </p>
                 <button
                   type="submit"
                   className="inline-flex items-center justify-center rounded-lg bg-primary px-3.5 py-1.5 text-xs font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={!aiPrompt.trim()}
+                  disabled={!aiPrompt.trim() || aiLoading}
                 >
-                  Save prompt
+                  {aiLoading ? "Sending…" : "Send"}
                 </button>
               </div>
             </form>
@@ -367,16 +408,17 @@ export function AppLayout({ children }: AppLayoutProps) {
               <div className="max-h-64 overflow-y-auto rounded-xl border border-dashed border-border/60 bg-muted/40 p-2">
                 {aiHistory.length === 0 ? (
                   <p className="text-xs text-muted-foreground px-1 py-2">
-                    No prompts yet. Add one above to start your history.
+                    No messages yet. Send a prompt above to talk to the agent.
                   </p>
                 ) : (
-                  <ul className="space-y-1.5">
-                    {aiHistory.map((prompt, index) => (
+                  <ul className="space-y-3">
+                    {aiHistory.map((item, index) => (
                       <li
                         key={index}
-                        className="rounded-lg bg-background/80 px-2.5 py-2 text-xs text-foreground shadow-sm border border-border/60"
+                        className="rounded-lg bg-background/80 px-2.5 py-2 text-xs shadow-sm border border-border/60 space-y-1.5"
                       >
-                        {prompt}
+                        <p className="font-medium text-foreground">You: {item.prompt}</p>
+                        <p className="text-muted-foreground whitespace-pre-wrap">Agent: {item.response}</p>
                       </li>
                     ))}
                   </ul>

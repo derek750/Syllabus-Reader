@@ -35,14 +35,34 @@ from .datastructure import (
     UpdateCourseRequest,
     CreateAssignmentRequest,
     UpdateAssignmentRequest,
+    AgentRequest,
 )
 from .ai.assignment_extractor import extract_assignments_from_syllabus_pdf
+from .ai.agent import run_agent_async
+
 router = APIRouter(prefix="/api")
 
 
 @router.get("/health")
 def health_check():
     return {"status": "ok"}
+
+
+@router.post("/agent")
+async def agent_chat(request: AgentRequest):
+    """Run the AI agent with the given prompt for the given user. Returns the agent's response."""
+    try:
+        prompt = (request.prompt or "").strip()
+        if not prompt:
+            raise HTTPException(status_code=400, detail="Prompt is required")
+        if not request.user_id:
+            raise HTTPException(status_code=400, detail="user_id is required")
+        response = await run_agent_async(prompt, request.user_id)
+        return {"success": True, "response": response}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/auth/google")

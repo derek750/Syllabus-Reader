@@ -47,6 +47,11 @@ class UpdateAssignmentRequest(BaseModel):
     archived: Optional[bool] = None
 
 
+class AgentRequest(BaseModel):
+    prompt: str
+    user_id: str
+
+
 __all__ = [
     "IDTokenRequest",
     "InsertRequest",
@@ -54,4 +59,5 @@ __all__ = [
     "UpdateCourseRequest",
     "CreateAssignmentRequest",
     "UpdateAssignmentRequest",
+    "AgentRequest",
 ]
