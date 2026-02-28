@@ -1,4 +1,5 @@
--- Create courses and syllabi tables for storing user courses and their syllabi PDFs
+-- Courses and syllabi tables (composed schema).
+-- Run in the Supabase SQL editor or via psql. Requires public.users to exist.
 
 CREATE TABLE IF NOT EXISTS public.courses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -12,7 +13,6 @@ CREATE TABLE IF NOT EXISTS public.courses (
   metadata jsonb DEFAULT '{}'::jsonb
 );
 
--- Index on user_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_courses_user_id ON public.courses (user_id);
 
 CREATE TABLE IF NOT EXISTS public.syllabi (
@@ -27,5 +27,4 @@ CREATE TABLE IF NOT EXISTS public.syllabi (
   metadata jsonb DEFAULT '{}'::jsonb
 );
 
--- Index on course_id for faster lookups
 CREATE INDEX IF NOT EXISTS idx_syllabi_course_id ON public.syllabi (course_id);
