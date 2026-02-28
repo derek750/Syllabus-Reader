@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { X, BookOpen, FileText, Calendar, Percent, MapPin, Info, Upload, Download, Trash2, Sparkles } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { SyllabusUploadModal } from "@/components/SyllabusUploadModal";
@@ -348,6 +348,7 @@ export function CourseDetailPage() {
   const archivedAssignments = assignmentsWithColors.filter((a) => a.archived);
   const visibleAssignments = assignmentsWithColors.filter((a) => !a.archived);
   const [archivedModalOpen, setArchivedModalOpen] = useState(false);
+  const [hoveredSliceIndex, setHoveredSliceIndex] = useState<number | null>(null);
 
   const weightsPieData =
     assignmentsWithColors.length > 0
@@ -360,6 +361,8 @@ export function CourseDetailPage() {
           color: a._color,
         }))
       : [];
+
+  let overallGrade: number | null = null;
 
   const gradesPieData = (() => {
     if (assignmentsWithColors.length === 0) return [];
@@ -378,6 +381,10 @@ export function CourseDetailPage() {
     }
     const total = earned + lost + ungraded;
     if (total === 0) return [];
+    const gradedTotal = earned + lost;
+    if (gradedTotal > 0) {
+      overallGrade = round2((earned / gradedTotal) * 100);
+    }
     return [
       { name: "Earned", value: round2(earned), color: "hsl(146, 75%, 40%)" },
       { name: "Lost", value: round2(lost), color: "hsl(0, 72%, 51%)" },
@@ -387,6 +394,10 @@ export function CourseDetailPage() {
 
   const pieData = chartMode === "weights" ? weightsPieData : gradesPieData;
   const pieTotal = pieData.reduce((sum, d) => sum + (d.value || 0), 0);
+  const hoveredSlice =
+    hoveredSliceIndex != null && hoveredSliceIndex >= 0 && hoveredSliceIndex < pieData.length
+      ? pieData[hoveredSliceIndex]
+      : null;
 
   if (!courseId) {
     return (
@@ -541,7 +552,7 @@ export function CourseDetailPage() {
                   ) : (
                     <>
                       {pieTotal === 0 ? null : pieData.length > 0 ? (
-                        <div className="h-64 w-full max-w-sm mx-auto">
+                        <div className="relative h-64 w-full max-w-sm mx-auto">
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
@@ -553,46 +564,41 @@ export function CourseDetailPage() {
                                 paddingAngle={2}
                                 dataKey="value"
                                 nameKey="name"
+                                onMouseEnter={(_, index) => setHoveredSliceIndex(index)}
+                                onMouseLeave={() => setHoveredSliceIndex(null)}
                               >
                                 {pieData.map((entry, index) => (
                                   <Cell key={`cell-${index}`} fill={entry.color} />
                                 ))}
                               </Pie>
-                              <Tooltip
-                                content={({ active, payload }) => {
-                                  if (!active || !payload?.length) return null;
-                                  const p = payload[0].payload as {
-                                    name: string;
-                                    fullName?: string;
-                                    value: number;
-                                    worth?: number;
-                                    grade?: number | null;
-                                  };
-                                  const label = p.fullName ?? p.name;
-                                  const valuePct = `${round2(Number(payload[0].value))}%`;
-                                  const lines: string[] = [];
-                                  if (chartMode === "weights") {
-                                    lines.push(`Worth: ${valuePct}`);
-                                    if (p.grade != null) lines.push(`Grade: ${round2(p.grade)}%`);
-                                  } else {
-                                    lines.push(valuePct);
-                                  }
-                                  return (
-                                    <div className="rounded-lg border border-border/80 bg-card px-3 py-2 shadow-md text-sm">
-                                      <p className="font-medium truncate max-w-[220px]">{label}</p>
-                                      <p className="text-muted-foreground">{lines.join(" · ")}</p>
-                                    </div>
-                                  );
-                                }}
-                                contentStyle={{ borderRadius: "var(--radius)" }}
-                              />
                             </PieChart>
                           </ResponsiveContainer>
-                          <p className="text-center text-sm text-muted-foreground mt-2">
-                            {chartMode === "weights"
-                              ? "Grade weight distribution"
-                              : "Earned vs lost vs ungraded"}
-                          </p>
+                          {chartMode === "grades" && overallGrade !== null && (
+                            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                              <div className="text-center">
+                                <div className="text-2xl font-semibold">
+                                  {overallGrade.toFixed(2)}%
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Current grade
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {hoveredSlice && chartMode === "weights" && (
+                            <p className="text-center text-sm text-muted-foreground mt-2">
+                              {(hoveredSlice as any).fullName ?? hoveredSlice.name} – Worth{" "}
+                              {round2(
+                                (hoveredSlice as any).worth ?? (hoveredSlice.value as number)
+                              )}
+                              %
+                            </p>
+                          )}
+                          {hoveredSlice && chartMode === "grades" && (
+                            <p className="text-center text-sm text-muted-foreground mt-2">
+                              {hoveredSlice.name} – {round2(hoveredSlice.value)}%
+                            </p>
+                          )}
                         </div>
                       ) : null}
 
