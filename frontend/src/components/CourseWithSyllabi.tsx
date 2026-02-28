@@ -46,6 +46,7 @@ interface CourseWithSyllabiProps {
   onDownloadClick: (url: string) => void;
   onDeleteSyllabusClick: (syllabusId: string) => void;
   isLoading?: boolean;
+  onAssignmentsRefreshed?: () => void;
 }
 
 export function CourseWithSyllabi({
@@ -60,6 +61,7 @@ export function CourseWithSyllabi({
   onDownloadClick,
   onDeleteSyllabusClick,
   isLoading = false,
+  onAssignmentsRefreshed,
 }: CourseWithSyllabiProps) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [assignmentsVisible, setAssignmentsVisible] = useState(false);
@@ -173,6 +175,7 @@ export function CourseWithSyllabi({
       setNewAssignmentWorth("");
       setNewAssignmentExtraInfo("");
       setNewAssignmentLocation("");
+      onAssignmentsRefreshed?.();
     } catch (error) {
       setSaveAssignmentError(
         error instanceof Error ? error.message : "Failed to create assignment"
@@ -192,6 +195,7 @@ export function CourseWithSyllabi({
         throw new Error("Failed to delete assignment");
       }
       setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+      onAssignmentsRefreshed?.();
     } catch (error) {
       setAssignmentsError(
         error instanceof Error ? error.message : "Failed to delete assignment"
@@ -261,6 +265,7 @@ export function CourseWithSyllabi({
       setAssignments((prev) => [...prev, ...created]);
       setAssignmentsLoaded(true);
       setAssignmentsVisible(true);
+      onAssignmentsRefreshed?.();
       setAiAssignmentsBySyllabus((prev) => ({
         ...prev,
         [syllabusId]: [],
@@ -275,12 +280,12 @@ export function CourseWithSyllabi({
   };
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden rounded-2xl border-border/80">
       <CardHeader className="pb-3">
         <div className="space-y-2">
           <div className="flex items-start justify-between">
             <div>
-              <CardTitle className="text-lg">{courseName}</CardTitle>
+              <CardTitle className="text-lg font-semibold">{courseName}</CardTitle>
               <div className="flex gap-4 text-sm text-muted-foreground mt-1">
                 {courseCode && <span>{courseCode}</span>}
                 {instructor && <span>{instructor}</span>}

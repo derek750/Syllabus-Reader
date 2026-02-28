@@ -121,10 +121,10 @@ export function IndexPage() {
     <div className="space-y-8">
       <header className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground mt-1">Your courses and upcoming deadlines</p>
         </div>
-        <Button className="gap-2" onClick={() => setAddOpen(true)}>
+        <Button className="gap-2 rounded-xl" size="lg" onClick={() => setAddOpen(true)}>
           <Plus className="h-4 w-4" />
           Add Course
         </Button>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, GraduationCap } from "lucide-react";
 import { useStore } from "@/store";
 import { Button } from "@/components/Button";
@@ -7,6 +7,18 @@ import { Input } from "@/components/Input";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { GradeCategoryCard } from "@/pages/grades/GradeCategoryCard";
+
+const API_BASE = "http://localhost:8000/api";
+const COURSE_COLORS = [
+  "#6366f1", "#ec4899", "#f59e0b", "#10b981",
+  "#3b82f6", "#8b5cf6", "#ef4444", "#06b6d4",
+];
+
+function colorForId(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return COURSE_COLORS[h % COURSE_COLORS.length];
+}
 
 function getCatAvg(
   catId: string,
@@ -38,6 +50,7 @@ function getCourseAvg(
 export function GradesPage() {
   const {
     courses,
+    setCourses,
     categories,
     grades,
     addCategory,
@@ -55,6 +68,36 @@ export function GradesPage() {
     maxScore: "100",
     categoryId: "",
   });
+
+  const loadCourses = useCallback(async () => {
+    try {
+      const userRaw = localStorage.getItem("user");
+      if (!userRaw) return;
+      const parsed = JSON.parse(userRaw);
+      const userId = parsed?.id;
+      if (!userId) return;
+      const res = await fetch(`${API_BASE}/courses?user_id=${userId}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const rows = Array.isArray(data?.courses) ? data.courses : [];
+      const normalized = rows.map((c: { id: string; course_name?: string; name?: string; semester?: string; color?: string; created_at?: string; updated_at?: string }) => ({
+        id: String(c.id ?? ""),
+        name: String(c.course_name ?? c.name ?? ""),
+        semester: c.semester ?? null,
+        color: String(c.color ?? colorForId(String(c.id))),
+        syllabus_path: null,
+        created_at: String(c.created_at ?? new Date().toISOString()),
+        updated_at: String(c.updated_at ?? c.created_at ?? new Date().toISOString()),
+      }));
+      setCourses(normalized);
+    } catch {
+      // ignore
+    }
+  }, [setCourses]);
+
+  useEffect(() => {
+    if (courses.length === 0) loadCourses();
+  }, [courses.length, loadCourses]);
 
   const courseCats = categories.filter((c) => c.course_id === selectedCourse);
   const courseAvg = getCourseAvg(courseCats, grades);
@@ -79,15 +122,18 @@ export function GradesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-bold tracking-tight">Grade Tracker</h1>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Grade Tracker</h1>
+          <p className="text-muted-foreground mt-1">Track categories and grades by course</p>
+        </div>
         <Select
           value={selectedCourse}
           onValueChange={setSelectedCourse}
           options={courses.map((c) => ({ value: c.id, label: c.name }))}
           placeholder="Select a course"
-          className="w-64"
+          className="w-56 md:w-64"
         />
       </div>
 
