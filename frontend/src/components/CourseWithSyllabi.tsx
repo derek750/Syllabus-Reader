@@ -5,8 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Input } from "@/components/Input";
 import { formatAssignmentDate, formatAssignmentTime } from "@/lib/utils";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/config";
 
 interface Syllabus {
   id: string;

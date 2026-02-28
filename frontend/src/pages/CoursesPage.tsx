@@ -31,7 +31,7 @@ interface Course {
   updated_at: string;
 }
 
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/config";
 
 export function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);

@@ -9,8 +9,7 @@ import { Input } from "@/components/Input";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { formatAssignmentDate, formatAssignmentTime } from "@/lib/utils";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/config";
 
 interface Course {
   id: string;

@@ -32,8 +32,7 @@ import { Modal, ModalHeader, ModalTitle } from "@/components/Modal";
 import { Select } from "@/components/Select";
 import { cn } from "@/lib/utils";
 import type { Event } from "@/types";
-
-const API_BASE = "http://localhost:8000/api";
+import { API_BASE } from "@/config";
 
 interface Assignment {
   id: string;

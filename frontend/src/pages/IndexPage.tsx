@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/Skeleton";
 import { DashboardStats } from "@/pages/dashboard/DashboardStats";
 import { CourseCard } from "@/pages/dashboard/CourseCard";
 import type { Course, Assignment } from "@/types";
+import { API_BASE } from "@/config";
 
 const COURSE_COLORS = [
   "#6366f1", "#ec4899", "#f59e0b", "#10b981",
@@ -23,8 +24,6 @@ function colorForId(id: string) {
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return COURSE_COLORS[h % COURSE_COLORS.length];
 }
-
-const API_BASE = "http://localhost:8000/api";
 
 export function IndexPage() {
   const navigate = useNavigate();
