@@ -1,6 +1,6 @@
 import { type ReactNode, type SVGProps, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { BookOpen, LayoutDashboard, CalendarDays, GraduationCap, LogOut, Moon, Sun, PanelLeftClose, PanelLeft } from "lucide-react";
+import { BookOpen, LayoutDashboard, CalendarDays, LogOut, Moon, Sun, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/store";
 
@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/courses", label: "Courses", icon: BookOpen },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/grades", label: "Grades", icon: GraduationCap },
 ] as const;
 
 function GeminiLogo(props: SVGProps<SVGSVGElement>) {

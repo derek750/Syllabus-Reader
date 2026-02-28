@@ -3,7 +3,6 @@ import { StoreProvider } from "@/store";
 import { AppLayout } from "@/components/AppLayout";
 import { IndexPage } from "@/pages/IndexPage";
 import { CalendarPage } from "@/pages/CalendarPage";
-import { GradesPage } from "@/pages/GradesPage";
 import { CoursesPage } from "@/pages/CoursesPage";
 import { CourseDetailPage } from "@/pages/CourseDetailPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
@@ -29,7 +28,6 @@ function AppRoutes() {
       <Route path="/courses" element={<Protected><AppLayout><CoursesPage /></AppLayout></Protected>} />
       <Route path="/courses/:courseId" element={<Protected><AppLayout><CourseDetailPage /></AppLayout></Protected>} />
       <Route path="/calendar" element={<Protected><AppLayout><CalendarPage /></AppLayout></Protected>} />
-      <Route path="/grades" element={<Protected><AppLayout><GradesPage /></AppLayout></Protected>} />
       <Route path="/auth" element={<Navigate to="/" replace />} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/Card";
 
 interface DashboardStatsProps {
   courseCount: number;
+  assignmentCount: number;
   upcomingCount: number;
   overallAvg: number | null;
   iconBook: LucideIcon;
@@ -12,6 +13,7 @@ interface DashboardStatsProps {
 
 export function DashboardStats({
   courseCount,
+  assignmentCount,
   upcomingCount,
   overallAvg,
   iconBook: BookOpen,
@@ -19,7 +21,7 @@ export function DashboardStats({
   iconGraduation: GraduationCap,
 }: DashboardStatsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <Card>
         <CardContent className="flex items-center gap-4 p-6">
           <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -35,6 +37,17 @@ export function DashboardStats({
         <CardContent className="flex items-center gap-4 p-6">
           <div className="h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center">
             <CalendarDays className="h-6 w-6 text-destructive" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold">{assignmentCount}</p>
+            <p className="text-sm text-muted-foreground">Assignments</p>
+          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardContent className="flex items-center gap-4 p-6">
+          <div className="h-12 w-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+            <CalendarDays className="h-6 w-6 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
             <p className="text-2xl font-bold">{upcomingCount}</p>
