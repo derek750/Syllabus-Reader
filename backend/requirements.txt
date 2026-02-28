@@ -23,3 +23,6 @@ langchain
 langchain-core
 langchain-google-genai
 langgraph
+
+# Cache
+redis

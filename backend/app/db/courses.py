@@ -2,6 +2,14 @@ from typing import Any, Dict, List, Optional
 import os
 from datetime import datetime
 from .supabase_client import insert_row, read_rows, update_row, delete_row
+from app.cache import (
+    cache_get,
+    cache_set,
+    cache_delete,
+    cache_delete_pattern,
+    key_user_courses,
+    key_course,
+)
 
 # import here to avoid circular import if routes import courses
 from .pdf_storage import delete_syllabus_pdf
@@ -18,18 +26,33 @@ def create_course(user_id: str, course_name: str, course_code: Optional[str] = N
         "semester": semester,
         "instructor": instructor,
     }
-    return insert_row("courses", data)
+    row = insert_row("courses", data)
+    cache_delete(key_user_courses(user_id))
+    return row
 
 
 def get_user_courses(user_id: str) -> List[Dict[str, Any]]:
     """Get all courses for a user."""
-    return read_rows("courses", query={"user_id": user_id})
+    key = key_user_courses(user_id)
+    cached = cache_get(key)
+    if cached is not None:
+        return cached
+    rows = read_rows("courses", query={"user_id": user_id})
+    cache_set(key, rows)
+    return rows
 
 
 def get_course(course_id: str) -> Dict[str, Any]:
     """Get a single course by ID."""
+    key = key_course(course_id)
+    cached = cache_get(key)
+    if cached is not None:
+        return cached
     rows = read_rows("courses", query={"id": course_id})
-    return rows[0] if rows else None
+    result = rows[0] if rows else None
+    if result is not None:
+        cache_set(key, result)
+    return result
 
 
 def delete_course(course_id: str) -> None:
@@ -49,12 +72,16 @@ def delete_course(course_id: str) -> None:
 
     # finally remove the course row
     delete_row("courses", "id", course_id)
+    cache_delete(key_course(course_id))
+    cache_delete_pattern(f"course_assignments:{course_id}:*")
 
 
 def update_course(course_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Update a course."""
     data["updated_at"] = datetime.utcnow().isoformat()
-    return update_row("courses", "id", course_id, data)
+    row = update_row("courses", "id", course_id, data)
+    cache_delete(key_course(course_id))
+    return row
 
 
 def create_syllabus(course_id: str, file_path: str, file_name: str, 
