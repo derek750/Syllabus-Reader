@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Analytics } from "@vercel/analytics/react";
 import { StoreProvider } from "@/store";
 import { AppLayout } from "@/components/AppLayout";
@@ -9,6 +9,12 @@ import { CourseDetailPage } from "@/pages/CourseDetailPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import SignInPage from "@/pages/SignInPage";
 import type { ReactElement } from "react";
+
+/** Sends page views to Vercel Analytics on every route change (required for SPA). */
+function VercelAnalytics() {
+  const location = useLocation();
+  return <Analytics path={location.pathname} route={location.pathname} />;
+}
 
 
 function Protected({ children }: { children: ReactElement }) {
@@ -40,8 +46,8 @@ export default function App() {
     <StoreProvider>
       <BrowserRouter>
         <AppRoutes />
+        <VercelAnalytics />
       </BrowserRouter>
-      <Analytics />
     </StoreProvider>
   );
 }
